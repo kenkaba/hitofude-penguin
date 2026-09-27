@@ -1,0 +1,22 @@
+{
+  "appId": "com.kenkaba.hitofudepenguin",
+  "appName": "ひとふでペンギン",
+  "webDir": "app",
+  "backgroundColor": "#BFE3F2",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#BFE3F2"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 600,
+      "launchAutoHide": true,
+      "backgroundColor": "#BFE3F2",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "DEFAULT",
+      "overlaysWebView": true
+    }
+  }
+}

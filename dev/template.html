@@ -241,11 +241,20 @@ try {
   if (legacy && Array.isArray(legacy.stars)) { const m = {}; LEVELS.forEach((L, i) => { if (legacy.stars[i]) m[L.name] = legacy.stars[i]; }); mergeProgress({ byName: m }); if (typeof legacy.sound === 'boolean') save.sound = legacy.sound; }
 } catch (e) {}
 syncStars();
+// iOS/Android app (Capacitor): progress also lives in native Preferences (survives WebView storage purges)
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const NP = NATIVE ? window.Capacitor.Plugins : null;
+if (NP && NP.Preferences) NP.Preferences.get({ key: SAVE_KEY }).then(r => {
+  let changed = false; try { changed = mergeProgress(JSON.parse((r && r.value) || 'null')); } catch (e) {}
+  syncStars(); persist();
+  if (changed) { syncSoundBtn(); if (mode === 'select') buildGrid(); }
+}).catch(() => {});
 let cloudDoc = null, cloudTimer = 0;
 function persist() {
   syncStars();
   const data = { byName: save.byName, fishBy: save.fishBy, goldBy: save.goldBy, inkBy: save.inkBy, equip: save.equip, equipAt: save.equipAt || 0, sound: save.sound, soundAt: save.soundAt || 0 };
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(data)); } catch (e) {}
+  if (NP && NP.Preferences) NP.Preferences.set({ key: SAVE_KEY, value: JSON.stringify(data) }).catch(() => {});
   if (cloudDoc) { clearTimeout(cloudTimer); cloudTimer = setTimeout(() => { cloudDoc.set(Object.assign({ updatedAt: Date.now() }, data)).catch(() => {}); }, 400); }
 }
 // Claude account sync (only inside the claude.ai viewer; elsewhere the browser save is used)
@@ -313,7 +322,13 @@ const SFX = {
   crumble() { noise(.35, .25, 800); tone(160, .3, 'triangle', .06, .5); },
   star(i) { tone(880 * Math.pow(1.26, i), .22, 'sine', .15); },
 };
-function buzz(ms) { if (navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {} }
+function buzz(ms) {
+  if (NP && NP.Haptics) {   // app: native haptics (works on iPhone too). patterns = celebration, single = impact strength
+    try { if (Array.isArray(ms)) NP.Haptics.notification({ type: 'SUCCESS' }).catch(() => {}); else NP.Haptics.impact({ style: ms >= 40 ? 'HEAVY' : ms >= 15 ? 'MEDIUM' : 'LIGHT' }).catch(() => {}); } catch (e) {}
+    return;
+  }
+  if (navigator.vibrate) try { navigator.vibrate(ms); } catch (e) {}
+}
 
 // ---------- layout ----------
 let cw = 0, ch = 0, DPR = 1; const view = { s: 1, ox: 0, oy: 0 };

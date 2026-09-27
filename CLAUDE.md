@@ -76,3 +76,10 @@ python3 playall.py    # 実ブラウザで全面クリア（要 playwright）
 ## 7. 公開中のURL（参考）
 - オーナー用（Claude アカウントに記録同期）：https://claude.ai/artifact/Q7zxsWBGi1dzgz2N2wui3o
 - 友達共有用：https://claude.ai/artifact/JdTdtY7SdBoUrquTsibpiB
+
+## 8. 進捗メモ（2026-09-27）
+- Phase A 完了：https://kenkaba.github.io/hitofude-penguin/ （リポジトリ kenkaba/hitofude-penguin。main に push すると `.github/workflows/pages.yml` が `pwa/` を自動公開）。プライバシーポリシーは `pwa/privacy.html`。
+- Phase B 着手：Capacitor 8（SPM、CocoaPods不要）。appId `com.kenkaba.hitofudepenguin`、webDir は `app/`（`build_html.py` が生成するフォント同梱版。git管理外）。
+  - 保存は localStorage と `@capacitor/preferences` の両方（同じキー）、振動は `@capacitor/haptics`。どちらも `template.html` 内の `NP`（Capacitor 環境でのみ有効）経由。
+  - iOS は縦固定・アイコン・スプラッシュ設定済み。反映は `npm run sync`（ビルド＋`cap sync`）。
+  - 残り：Xcode を入れてシミュレーター確認 → 署名（Team 設定）→ TestFlight → 審査提出。Android は未追加（Google Play 登録料が必要なため保留）。
