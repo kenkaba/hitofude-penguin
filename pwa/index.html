@@ -138,6 +138,8 @@ button:focus-visible{outline:3px solid var(--pen);outline-offset:3px}
 .badge.medal{background:#FFE9A8;color:#8A5A00}
 .badge.goldfish{background:#FFF4C2;color:#9A6A00;box-shadow:0 0 0 2px #FFD44D inset}
 .badge.dim{font-size:12px;color:var(--ink-soft);background:transparent}
+.badge.streak{background:#FFE1CC;color:#B4480F;box-shadow:0 0 0 2px #FF8A3D inset}
+.badge.near{background:#E6E0FF;color:#4B3A9A}
 #resBtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px}
 @media (prefers-reduced-motion:reduce){.star .s{transition:none}}
 @media (max-width:420px){#strokeCount,#keyCount,#fishCount{padding:8px 7px}#meltTag{padding:8px 6px}#lvTitle{padding:6px 7px}}
@@ -621,14 +623,15 @@ const SFX = {
   pop(len) { tone(660 + Math.min(500, len), .12, 'triangle', .12, 1.5); },
   blocked() { tone(180, .12, 'square', .05, .7); },
   go() { tone(523, .09, 'triangle', .14); tone(784, .14, 'triangle', .14, 1, .08); },
-  fish() { tone(988, .08, 'sine', .16); tone(1319, .16, 'sine', .14, 1, .07); },
+  fish(m = 1) { tone(988 * m, .08, 'sine', .16); tone(1319 * m, .16, 'sine', .14, 1, .07); },
+  near() { noise(.22, .12, 2400); tone(1200, .22, 'sine', .08, .45); },
   boing() { tone(220, .28, 'sine', .22, 3.2); },
   boost() { noise(.25, .18, 900); tone(300, .25, 'sawtooth', .05, 3); },
   land(v) { noise(.07, Math.min(.25, v * .03), 500); },
   turn() { tone(420, .06, 'triangle', .06, .8); },
   splash() { noise(.6, .35, 700); tone(300, .4, 'sine', .08, .3); },
   ouch() { tone(620, .08, 'square', .08, .6); tone(300, .3, 'square', .07, .5, .08); },
-  win() { [523, 659, 784, 1047].forEach((f, i) => tone(f, .25, 'triangle', .14, 1, i * .09)); },
+  win(m = 1) { [523, 659, 784, 1047].forEach((f, i) => tone(f * m, .25, 'triangle', .14, 1, i * .09)); tone(2093 * m, .5, 'sine', .07, 1, .4); },
   key() { [784, 988, 1175, 1568].forEach((f, i) => tone(f, .16, 'triangle', .13, 1, i * .06)); },
   door() { tone(392, .12, 'triangle', .12); tone(523, .12, 'triangle', .12, 1, .1); tone(784, .3, 'triangle', .14, 1, .2); noise(.35, .08, 600); },
   warp() { tone(300, .25, 'sine', .14, 3.5); tone(900, .2, 'triangle', .06, .4, .08); },
@@ -673,6 +676,9 @@ addEventListener('resize', resize);
 // ---------- game state ----------
 let mode = 'title', li = 0, world = null, pre = null, cur = null, pointerId = null;
 let fx = [], shake = 0, slow = 1, t = 0, penAnim = null, resultTimer = 0, hintShown = false;
+// feel: hit-stop / zoom punch / flash / big stamp text, streaks, near misses, and the previous attempt's footprints
+let hitStop = 0, punch = 0, flash = 0, stamp = null, streak = 0, lastRun = null, runFish = 0, nearCd = 0, nearCount = 0;
+const nearState = new Map();
 let demo = null, hintTimer = 0;
 
 function newPenAnim() { return { phase: 0, squash: 0, blink: 0, nextBlink: 120, face: 'normal', angle: 0, flap: 0 }; }
@@ -684,6 +690,8 @@ function loadLevel(i, keepLines) {
   if (keepLines && pre) { for (const s of pre.strokes) { PG.addStroke(world, s); decorate(world.strokes[world.strokes.length - 1]); } world.inkUsed = pre.ink; }
   else pre = null;
   cur = null; fx = []; slow = 1; penAnim = newPenAnim(); resultTimer = 0;
+  world.trail = []; runFish = 0; nearCount = 0; nearCd = 0; nearState.clear(); stamp = null; punch = 0; flash = 0; hitStop = 0;
+  if (lastRun && lastRun.name !== L.name) lastRun = null;
   $('lvTitle').innerHTML = '<b>' + (L.secret ? '✨' : i + 1) + '</b>' + L.name;
   requestAnimationFrame(layoutView);
   const h = $('hint'); clearTimeout(hintTimer);
@@ -791,7 +799,7 @@ function handleEvents() {
   const p = world.p;
   for (const ev of world.events) {
     switch (ev.t) {
-      case 'fish': burst(ev.x, ev.y, C.gold, 14, 3, 'star'); SFX.fish(); buzz(15); fx.push(mk('text', ev.x, ev.y - 10, 0, -1, 50, C.warm)); break;
+      case 'fish': runFish++; burst(ev.x, ev.y, C.gold, 14 + runFish * 4, 3 + runFish * .5, 'star'); SFX.fish(1 + (runFish - 1) * .12); buzz(15); fx.push(mk('text', ev.x, ev.y - 10, 0, -1, 50, C.warm)); break;
       case 'boing': penAnim.squash = .35; burst(ev.x, ev.y, '#FF6F91', 8, 2.5); SFX.boing(); buzz(20); break;
       case 'boost': SFX.boost(); for (let i = 0; i < 8; i++) fx.push(mk('streak', p.x, p.y, -p.dir * (2 + Math.random() * 2), (Math.random() - .5), 20, C.gold)); break;
       case 'land': penAnim.squash = Math.min(.35, ev.v * .05); burst(p.x, p.y + R, '#FFFFFF', Math.min(12, ev.v * 2 | 0), 1.6, 'snow'); SFX.land(ev.v); break;
@@ -810,9 +818,46 @@ function handleEvents() {
   }
   world.events.length = 0;
 }
+function rectDist(rc, x, y) {
+  const c = PG.corners(rc); let inside = false, d = 1e9;
+  for (let i = 0, j = c.length - 1; i < c.length; j = i++) {
+    const [ax, ay] = c[j], [bx, by] = c[i];
+    if ((ay > y) !== (by > y) && x < (bx - ax) * (y - ay) / (by - ay) + ax) inside = !inside;
+    const vx = bx - ax, vy = by - ay, k = Math.max(0, Math.min(1, ((x - ax) * vx + (y - ay) * vy) / (vx * vx + vy * vy || 1)));
+    d = Math.min(d, Math.hypot(x - ax - vx * k, y - ay - vy * k));
+  }
+  return inside ? -d : d;
+}
+function trackRun() {
+  const w = world; if (w.state !== 'run') return;
+  const p = w.p, L = w.L;
+  if (w.frame % 3 === 0) w.trail.push([p.x, p.y]);
+  if (nearCd > 0) nearCd--;
+  const gaps = [];
+  (L.balls || []).forEach((b, i) => { const q = PG.ballPos(b, w.frame); gaps.push(['b' + i, Math.hypot(p.x - q[0], p.y - q[1]) - R - (b.r || 14)]); });
+  (w.rollers || []).forEach((r, i) => { if (r.alive) gaps.push(['r' + i, Math.hypot(p.x - r.x, p.y - r.y) - R - r.r]); });
+  (L.movers || []).forEach((m, i) => gaps.push(['m' + i, rectDist(PG.moverRect(m, w.frame), p.x, p.y) - R]));
+  (L.spikes || []).forEach((sp, i) => gaps.push(['s' + i, rectDist(sp, p.x, p.y) - R]));
+  for (const [id, d] of gaps) {
+    const st = nearState.get(id);
+    if (d < 11) { if (!st) nearState.set(id, 1); }
+    else if (st && d > 18) { nearState.delete(id); if (nearCd <= 0) nearMiss(p); }
+  }
+}
+function nearMiss(p) {
+  nearCount++; nearCd = 40;
+  fx.push(mk('near', p.x, p.y - 36, 0, -.7, 55, C.warm));
+  if (!reduceMotion) slow = Math.min(slow, .4);
+  SFX.near(); buzz(8);
+}
 function onWin() {
-  penAnim.face = 'happy'; slow = .25; confetti(); SFX.win(); buzz([20, 40, 20]);
   const st = PG.stars(world), nm = world.L.name;
+  streak++; lastRun = null;
+  penAnim.face = 'happy'; slow = .25; confetti(); SFX.win(1 + Math.min(streak - 1, 6) * .06); buzz([20, 40, 20]);
+  if (!reduceMotion) { hitStop = 7; punch = 1; }
+  flash = 1; stamp = { txt: st.total === 3 ? 'PERFECT!' : 'CLEAR!', t: 0, perfect: st.total === 3 };
+  { const g = world.L.goal, cols = [C.gold, '#FF6F91', '#5CC8FF', '#7ED957', C.warm];
+    for (let k = 0; k < (st.total === 3 ? 5 : 3); k++) setTimeout(() => { if (mode !== 'play' || !world || world.state !== 'win') return; const x = g.x + (Math.random() - .5) * 220, y = g.y - 120 - Math.random() * 160; burst(x, y, cols[k % 5], 26, 5, 'star'); tone(700 + k * 140, .12, 'triangle', .07); }, 180 + k * 200); }
   const prevMedal = medalOf(world.L), prevBest = save.inkBy[nm];
   save.byName[nm] = Math.max(save.byName[nm] || 0, st.total);
   if (st.fish) save.fishBy[nm] = true;
@@ -823,12 +868,16 @@ function onWin() {
   resultTimer = setTimeout(() => showResult(true, st), 1100);
 }
 function onFail(why) {
-  penAnim.face = 'dizzy'; const p = world.p;
+  penAnim.face = 'dizzy'; const p = world.p; streak = 0;
+  { const w = world, L = w.L, f = w.frame;
+    lastRun = { name: L.name, why, x: p.x, y: p.y, trail: w.trail.concat([[p.x, p.y]]),
+      balls: (L.balls || []).filter(b => b.period).map(b => { const q = PG.ballPos(b, f); return [q[0], q[1], b.r || 14]; }).concat((w.rollers || []).filter(r => r.alive).map(r => [r.x, r.y, r.r])),
+      movers: (L.movers || []).map(m => PG.moverRect(m, f)) }; }
   if (why === 'sea') { SFX.splash(); for (let i = 0; i < 26; i++) fx.push(mk('drop', p.x, SEA, (Math.random() - .5) * 6, -Math.random() * 9 - 2, 60, hz().c1, 3 + Math.random() * 3)); }
   else if (why === 'spike' || why === 'ball') { SFX.ouch(); burst(p.x, p.y, why === 'ball' ? '#7A3CA0' : C.danger, 16, 3.5); shake = reduceMotion ? 0 : 12; }
   else { SFX.ouch(); }
   buzz(60);
-  resultTimer = setTimeout(() => showResult(false, null, why), why === 'sea' ? 900 : 700);
+  resultTimer = setTimeout(() => showResult(false, null, why), why === 'sea' ? 750 : 560);
 }
 
 // ---------- screens ----------
@@ -884,12 +933,14 @@ function showResult(win, st, why) {
     stars.classList.remove('hidden');
     items.forEach(([lab, ok], i) => {
       const d = document.createElement('div'); d.className = 'star'; d.innerHTML = '<span class="s">★</span><small>' + lab + '</small>'; stars.appendChild(d);
-      if (ok) setTimeout(() => { d.classList.add('on'); SFX.star(i); buzz(10); }, 250 + i * 280);
+      if (ok) setTimeout(() => { d.classList.add('on'); SFX.star(i); buzz(i === 2 ? 25 : 10); if (i === 2 && st.total === 3) setTimeout(() => { SFX.key(); buzz([15, 25, 15]); }, 220); }, 250 + i * 280);
     });
     const ex = document.createElement('div'); ex.className = 'extra';
     ex.innerHTML = '<span class="ink">インク ' + Math.round(world.inkUsed) + (st.newBest ? '（自己ベスト！）' : '（自己ベスト ' + st.best + '）') + '　開発者 ' + L.dev + '</span>'
       + (st.medal ? '<span class="badge medal">' + (st.newMedal ? '🥇 金メダル獲得！' : '🥇 金メダル') + '</span>' : '<span class="badge dim">開発者以下のインクで 🥇</span>')
-      + (st.newGold ? '<span class="badge goldfish">✨ 金の魚を見つけた！（' + counts().gold + '/5）</span>' : '');
+      + (st.newGold ? '<span class="badge goldfish">✨ 金の魚を見つけた！（' + counts().gold + '/5）</span>' : '')
+      + (streak >= 2 ? '<span class="badge streak">🔥 ' + streak + '連続クリア！</span>' : '')
+      + (nearCount ? '<span class="badge near">😱 ヒヤッ ×' + nearCount + '</span>' : '');
     stars.after(ex);
     if (st.newMedal) setTimeout(() => { SFX.key(); buzz([15, 25, 15]); }, 1200);
     addBtn('もう一度', 'ghost', () => loadLevel(li));
@@ -903,6 +954,10 @@ function showResult(win, st, why) {
     stars.classList.add('hidden');
     $('resTitle').textContent = { sea: (TH.hazard && TH.hazard.title) || '海に落ちた！', spike: 'ツララに当たった！', ball: 'ウニに刺さった！', time: '迷子になった…' }[why] || '失敗';
     $('resSub').textContent = { sea: '足場が足りなかったみたい。別の道を探そう。', spike: 'トゲの上は、線で覆うか高く越えよう。', ball: '紫のウニは線をすり抜ける。赤いウニは線で受け止められる。道の形とタイミングを変えてみよう。', time: '25秒たってもゴールできなかった。道の向きを見直そう。' }[why] || '';
+    const L0 = world.L, sx0 = L0.start.x, sy0 = L0.start.y, gx0 = L0.goal.x, gy0 = L0.goal.y, pp = world.p;
+    const prog = Math.round(Math.max(0, Math.min(99, (1 - Math.hypot(gx0 - pp.x, gy0 - pp.y) / (Math.hypot(gx0 - sx0, gy0 - sy0) || 1)) * 100)));
+    const ex = document.createElement('div'); ex.className = 'extra';
+    ex.innerHTML = (prog >= 50 ? '<span class="badge near">かまくらまで あと ' + (100 - prog) + '%</span>' : '') + '<span class="badge dim">👣 次は前回の足あとと、ぶつかった場所が見えるよ</span>'; stars.after(ex);
     addBtn('ステージ一覧', 'ghost', () => { buildGrid(); setMode('select'); });
     addBtn('もう一度', 'cta', () => loadLevel(li));
   }
@@ -984,13 +1039,15 @@ function frame(now) {
   let steps = 0;
   while (acc >= 1 && steps < 4) {
     acc -= 1; steps++;
-    if (mode === 'play' && world) { PG.step(world); handleEvents(); animPenguin(penAnim, world); if (world.state === 'run' && world.frame % 6 === 0) updateHud(); }
+    if (hitStop > 0) { hitStop--; stepFx(); continue; }
+    if (mode === 'play' && world) { PG.step(world); trackRun(); handleEvents(); animPenguin(penAnim, world); if (world.state === 'run' && world.frame % 6 === 0) updateHud(); }
     else if (mode !== 'play') demoStep();
     stepFx();
   }
   if (acc > 4) acc = 0;
   if (slow < 1) slow = Math.min(1, slow + .006);
   if (shake > 0) shake *= .85;
+  punch *= .9; flash *= .86; if (stamp) stamp.t += dt / 16.67;
   render();
   requestAnimationFrame(frame);
 }
@@ -1255,7 +1312,9 @@ function render() {
   drawParticles();
   const pa = mode === 'play' ? penAnim : demo && demo.pen;
   const sx = shake > .3 ? (Math.random() - .5) * shake : 0, sy = shake > .3 ? (Math.random() - .5) * shake : 0;
-  ctx.setTransform(DPR * view.s, 0, 0, DPR * view.s, DPR * (view.ox + sx), DPR * (view.oy + sy));
+  let vs = view.s, vox = view.ox, voy = view.oy;
+  if (punch > .01 && w && w.L) { const g = w.L.goal, s2 = vs * (1 + punch * .07); vox += g.x * (vs - s2); voy += (g.y - 20) * (vs - s2); vs = s2; }
+  ctx.setTransform(DPR * vs, 0, 0, DPR * vs, DPR * (vox + sx), DPR * (voy + sy));
   drawSea();
   if (!w) return;
   const L = w.L;
@@ -1267,6 +1326,7 @@ function render() {
   (L.boosts || []).forEach(drawBoost);
   (L.spikes || []).forEach(drawSpikes);
   (L.crumbles || []).forEach((b, i) => { if (!w.gone[i]) drawCrumble(b, w.crumble[i] >= 0 ? w.frame - w.crumble[i] : -1); });
+  if (w.state === 'ready' && mode === 'play') { drawLastRun(); drawMotionGhosts(L); }
   (L.movers || []).forEach(m => { drawMoverTrack(m); drawSpikes(PG.moverRect(m, w.frame)); });
   (L.balls || []).forEach(b => { drawBallTrack(b); const q = PG.ballPos(b, w.frame); drawUrchin(q[0], q[1], b.r || 14, t * .01 + (b.x || b.cx || 0)); });
   (w.rollers || []).forEach(r => {
@@ -1284,6 +1344,46 @@ function render() {
   drawFx();
   drawSea(.45);
   drawSeaFront();
+  drawOverlay();
+}
+// ready: translucent copies loop through each moving hazard's real motion, with an arrow for the starting direction
+function drawMotionGhosts(L) {
+  const ph = t;
+  (L.balls || []).forEach(b => {
+    if (!b.period) return;
+    const q = PG.ballPos(b, ph % b.period), a = PG.ballPos(b, 0), n = PG.ballPos(b, 7);
+    ctx.save(); ctx.globalAlpha = .3; drawUrchin(q[0], q[1], b.r || 14, t * .01); ctx.restore();
+    const dx = n[0] - a[0], dy = n[1] - a[1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, rr = (b.r || 14) + 9;
+    ctx.save(); ctx.translate(a[0] + ux * rr, a[1] + uy * rr); ctx.rotate(Math.atan2(uy, ux)); ctx.fillStyle = TH.dark ? '#FFFFFF' : '#5B2A86'; ctx.globalAlpha = .8;
+    ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-4, -6); ctx.lineTo(-4, 6); ctx.closePath(); ctx.fill(); ctx.restore();
+  });
+  (L.movers || []).forEach(m => { ctx.save(); ctx.globalAlpha = .25; drawSpikes(PG.moverRect(m, ph % m.period)); ctx.restore(); });
+}
+// ready after a failure: where the penguin went last time (a big dot every 0.5s) and what it hit
+function drawLastRun() {
+  const lr = lastRun; if (!lr) return;
+  ctx.save();
+  lr.trail.forEach((q, i) => { const big = i % 10 === 0; ctx.globalAlpha = .2 + .6 * i / lr.trail.length; ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = 'rgba(25,48,77,.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(q[0], q[1], big ? 4.5 : 2.4, 0, 6.28); ctx.fill(); if (big) ctx.stroke(); });
+  if (lr.why === 'ball' || lr.why === 'spike') { ctx.globalAlpha = .5; lr.balls.forEach(([x, y, r]) => drawUrchin(x, y, r, 0)); lr.movers.forEach(rc => drawSpikes(rc)); }
+  ctx.globalAlpha = .9; ctx.strokeStyle = C.danger; ctx.lineWidth = 4; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(lr.x - 9, lr.y - 9); ctx.lineTo(lr.x + 9, lr.y + 9); ctx.moveTo(lr.x + 9, lr.y - 9); ctx.lineTo(lr.x - 9, lr.y + 9); ctx.stroke();
+  ctx.font = '800 13px ' + FONT; ctx.textAlign = 'center'; const ty = Math.max(24, lr.y - 22), tw = ctx.measureText('前回').width + 14;
+  ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.roundRect(lr.x - tw / 2, ty - 14, tw, 20, 10); ctx.fill(); ctx.fillStyle = C.danger; ctx.fillText('前回', lr.x, ty + 1);
+  ctx.restore();
+}
+function drawOverlay() {
+  if (flash < .02 && !stamp) return;
+  ctx.save(); ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  if (flash > .02) { ctx.fillStyle = 'rgba(255,255,255,' + (flash * .5) + ')'; ctx.fillRect(0, 0, cw, ch); }
+  if (stamp) {
+    const k = Math.min(1, stamp.t / 9), sc = reduceMotion ? 1 : 2.4 - 1.4 * (1 - Math.pow(1 - k, 3)), size = Math.min(cw * .15, 64);
+    ctx.translate(cw / 2, ch * .34); ctx.rotate(-.07); ctx.scale(sc, sc); ctx.globalAlpha = Math.min(1, stamp.t / 4);
+    ctx.font = '400 ' + size + 'px "Dela Gothic One", ' + FONT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round';
+    ctx.lineWidth = size * .22; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText(stamp.txt, 0, 0);
+    if (stamp.perfect) { const g = ctx.createLinearGradient(-size * 2, 0, size * 2, 0); ['#FF5C8A', '#FFB23F', '#FFD23F', '#5CD68A', '#5CC8FF', '#9A7CF0'].forEach((c, i) => g.addColorStop(i / 5, c)); ctx.fillStyle = g; } else ctx.fillStyle = C.warm;
+    ctx.fillText(stamp.txt, 0, 0);
+  }
+  ctx.restore();
 }
 function drawAurora() {
   ctx.save(); ctx.globalAlpha = .22; ctx.globalCompositeOperation = 'lighter';
@@ -1658,6 +1758,7 @@ function drawFx() {
     else if (f.type === 'streak') { ctx.strokeStyle = f.col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x - f.vx * 5, f.y - f.vy * 5); ctx.stroke(); }
     else if (f.type === 'text') { ctx.fillStyle = f.col; ctx.font = '800 18px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText('+1', f.x, f.y); }
     else if (f.type === 'text3') { ctx.fillStyle = f.col; ctx.font = '800 16px ' + FONT; ctx.textAlign = 'center'; ctx.fillText('金の魚！', f.x, f.y); }
+    else if (f.type === 'near') { ctx.font = '400 20px "Dela Gothic One", ' + FONT; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText('ヒヤッ！', f.x, f.y); ctx.fillStyle = f.col; ctx.fillText('ヒヤッ！', f.x, f.y); }
     else if (f.type === 'text2') { ctx.fillStyle = f.col; ctx.font = '800 14px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText('くるっ', f.x, f.y); }
     else { ctx.fillStyle = f.col; ctx.beginPath(); ctx.arc(f.x, f.y, f.size, 0, 6.28); ctx.fill(); }
     ctx.restore();
