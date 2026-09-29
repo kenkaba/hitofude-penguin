@@ -83,3 +83,5 @@ python3 playall.py    # 実ブラウザで全面クリア（要 playwright）
   - 保存は localStorage と `@capacitor/preferences` の両方（同じキー）、振動は `@capacitor/haptics`。どちらも `template.html` 内の `NP`（Capacitor 環境でのみ有効）経由。
   - iOS は縦固定・アイコン・スプラッシュ設定済み。反映は `npm run sync`（ビルド＋`cap sync`）。
   - 残り：Xcode を入れてシミュレーター確認 → 署名（Team 設定）→ TestFlight → 審査提出。Android は未追加（Google Play 登録料が必要なため保留）。
+- 背景ワールド（2026-09-29）：3面ごとに世界が変わる（全17＋秘密の面は月面）。`template.html` の `THEMES`（順番）と各テーマの `paint`（背景・キャッシュ描画）、`hazard`（下の落ちる所の色と失敗メッセージ）、`ground`（足場の見た目）、`parts`（舞う粒）。描いた線・ウニ・かまくら・物理は変えていない。
+

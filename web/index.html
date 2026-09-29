@@ -49,11 +49,11 @@ button:focus-visible{outline:3px solid var(--pen);outline-offset:3px}
 
 /* ---- HUD ---- */
 #hud{position:absolute;left:0;right:0;top:0;padding:10px 12px 0;pointer-events:none}
-#topbar{display:flex;align-items:center;gap:8px;max-width:560px;margin:0 auto}
+#topbar{display:flex;align-items:center;gap:6px;max-width:560px;margin:0 auto}
 .icon-btn{pointer-events:auto;width:44px;height:44px;border-radius:14px;background:var(--ui);box-shadow:0 3px 0 var(--ui-line);
   display:grid;place-items:center;font-size:20px;font-weight:800;flex:none}
 .icon-btn:active{transform:translateY(2px);box-shadow:0 1px 0 var(--ui-line)}
-#lvTitle{flex:1;min-width:0;font-weight:800;font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#lvTitle{flex:1;min-width:0;font-weight:800;font-size:16px;background:var(--ui);border-radius:12px;padding:6px 8px;box-shadow:0 3px 0 var(--ui-line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #lvTitle b{font-family:var(--display);font-weight:400;font-size:20px;margin-right:6px;color:var(--pen)}
 #strokeCount{font-weight:800;font-size:15px;background:var(--ui);border-radius:12px;padding:8px 10px;box-shadow:0 3px 0 var(--ui-line);flex:none;color:var(--danger)}
 #meltTag{font-size:15px;background:var(--ui);border-radius:12px;padding:8px 9px;box-shadow:0 3px 0 var(--ui-line);flex:none}
@@ -61,7 +61,7 @@ button:focus-visible{outline:3px solid var(--pen);outline-offset:3px}
 #keyCount.got{background:var(--gold);color:#19304D}
 #fishCount{font-weight:800;font-size:15px;background:var(--ui);border-radius:12px;padding:8px 10px;box-shadow:0 3px 0 var(--ui-line);flex:none}
 #inkWrap{max-width:560px;margin:10px auto 0;display:flex;align-items:center;gap:8px}
-#inkLabel{font-size:12px;font-weight:800;color:var(--ink-soft);flex:none}
+#inkLabel{font-size:12px;font-weight:800;color:var(--ink-soft);flex:none;background:var(--ui);border-radius:99px;padding:2px 8px}
 #inkTrack{position:relative;flex:1;height:14px;border-radius:99px;background:var(--ui);box-shadow:inset 0 0 0 2px var(--ui-line);overflow:visible}
 #inkFill{position:absolute;left:2px;top:2px;bottom:2px;border-radius:99px;background:linear-gradient(90deg,var(--pen-deep),var(--pen));width:calc(100% - 4px);transition:width .08s linear}
 #parMark{position:absolute;top:-7px;width:0;height:28px;border-left:2px dashed var(--gold)}
@@ -140,6 +140,7 @@ button:focus-visible{outline:3px solid var(--pen);outline-offset:3px}
 .badge.dim{font-size:12px;color:var(--ink-soft);background:transparent}
 #resBtns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:6px}
 @media (prefers-reduced-motion:reduce){.star .s{transition:none}}
+@media (max-width:420px){#strokeCount,#keyCount,#fishCount{padding:8px 7px}#meltTag{padding:8px 6px}#lvTitle{padding:6px 7px}}
 </style>
 </head>
 <body>
@@ -823,7 +824,7 @@ function onWin() {
 }
 function onFail(why) {
   penAnim.face = 'dizzy'; const p = world.p;
-  if (why === 'sea') { SFX.splash(); for (let i = 0; i < 26; i++) fx.push(mk('drop', p.x, SEA, (Math.random() - .5) * 6, -Math.random() * 9 - 2, 60, C.sea1, 3 + Math.random() * 3)); }
+  if (why === 'sea') { SFX.splash(); for (let i = 0; i < 26; i++) fx.push(mk('drop', p.x, SEA, (Math.random() - .5) * 6, -Math.random() * 9 - 2, 60, hz().c1, 3 + Math.random() * 3)); }
   else if (why === 'spike' || why === 'ball') { SFX.ouch(); burst(p.x, p.y, why === 'ball' ? '#7A3CA0' : C.danger, 16, 3.5); shake = reduceMotion ? 0 : 12; }
   else { SFX.ouch(); }
   buzz(60);
@@ -900,7 +901,7 @@ function showResult(win, st, why) {
     if (world.L.secret) $('resSub').textContent = '秘密の氷穴を踏破！ あなたは真のひとふでマスターです。';
   } else {
     stars.classList.add('hidden');
-    $('resTitle').textContent = { sea: '海に落ちた！', spike: 'ツララに当たった！', ball: 'ウニに刺さった！', time: '迷子になった…' }[why] || '失敗';
+    $('resTitle').textContent = { sea: (TH.hazard && TH.hazard.title) || '海に落ちた！', spike: 'ツララに当たった！', ball: 'ウニに刺さった！', time: '迷子になった…' }[why] || '失敗';
     $('resSub').textContent = { sea: '足場が足りなかったみたい。別の道を探そう。', spike: 'トゲの上は、線で覆うか高く越えよう。', ball: '紫のウニは線をすり抜ける。赤いウニは線で受け止められる。道の形とタイミングを変えてみよう。', time: '25秒たってもゴールできなかった。道の向きを見直そう。' }[why] || '';
     addBtn('ステージ一覧', 'ghost', () => { buildGrid(); setMode('select'); });
     addBtn('もう一度', 'cta', () => loadLevel(li));
@@ -1021,16 +1022,237 @@ function stepFx() {
 
 // ---------- render ----------
 const flakes = Array.from({ length: 46 }, () => ({ x: Math.random(), y: Math.random(), s: .5 + Math.random() * 1.6, v: .2 + Math.random() * .5 }));
+// ---------- stage worlds (5 stages each; drawn procedurally, cached per size) ----------
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let x = Math.imul(seed ^ seed >>> 15, 1 | seed); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x; return ((x ^ x >>> 14) >>> 0) / 4294967296; }; }
+function glowDisc(g, x, y, r, inner, outer) { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, inner); gr.addColorStop(1, outer); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 6.29); g.fill(); }
+function ridge(g, w, h, y0, amp, seed, color, step) { const R = rng(seed); g.fillStyle = color; g.beginPath(); g.moveTo(0, h); let y = y0; for (let x = 0; x <= w + step; x += step) { y = Math.max(y0 - amp, Math.min(y0 + amp * .4, y + (R() - .5) * amp * .6)); g.lineTo(x, y); } g.lineTo(w, h); g.closePath(); g.fill(); }
+function puff(g, x, y, s, color) { g.fillStyle = color; g.beginPath(); [[0, 0, 1], [-.9, .25, .7], [.9, .25, .75], [-.45, -.35, .7], [.45, -.3, .65]].forEach(([dx, dy, r]) => { g.moveTo(x + dx * s + r * s, y + dy * s); g.arc(x + dx * s, y + dy * s, r * s, 0, 6.29); }); g.fill(); }
+const BASE_THEMES = [
+  { id: 'ice', name: '氷の入り江', ice: true },
+  { id: 'savanna', name: 'サバンナの夕焼け', sky: ['#FF9E5E', '#FFD98F', '#FFE9B8'], parts: 'dust', partC: 'rgba(255,240,200,.7)',
+    hazard: { c1: '#4E97A8', c2: '#23505E', foam: '#E9F6F2', title: '川に落ちた！' },
+    ground: { top: '#EABF83', bot: '#C68A55', line: '#95613A', cap: '#86B84A', crack: 'rgba(149,97,58,.35)' },
+    paint(g, w, h) {
+      glowDisc(g, w * .68, h * .5, w * .42, 'rgba(255,245,200,.85)', 'rgba(255,200,120,0)');
+      g.fillStyle = '#FFF4CF'; g.beginPath(); g.arc(w * .68, h * .5, w * .13, 0, 6.29); g.fill();
+      ridge(g, w, h, h * .62, h * .05, 3, '#E69A62', 40); ridge(g, w, h, h * .7, h * .03, 8, '#C9764A', 30);
+      const sil = '#5A2D20'; g.fillStyle = sil; g.strokeStyle = sil;
+      const acacia = (x, y, s) => { g.lineWidth = s * .08; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.lineTo(x - s * .05, y - s * .5); g.lineTo(x - s * .3, y - s * .75); g.moveTo(x - s * .05, y - s * .5); g.lineTo(x + s * .25, y - s * .78); g.stroke(); g.beginPath(); g.ellipse(x - s * .02, y - s * .82, s * .6, s * .12, 0, 0, 6.29); g.ellipse(x - s * .3, y - s * .78, s * .28, s * .09, 0, 0, 6.29); g.fill(); };
+      acacia(w * .18, h * .7, w * .32); acacia(w * .86, h * .72, w * .22);
+      const giraffe = (x, y, s) => { g.lineCap = 'round'; g.lineWidth = s * .05; g.beginPath(); [-.22, -.12, .12, .22].forEach(d => { g.moveTo(x + d * s, y); g.lineTo(x + d * s * .9, y - s * .35); }); g.stroke(); g.beginPath(); g.ellipse(x, y - s * .4, s * .3, s * .12, -.15, 0, 6.29); g.fill(); g.lineWidth = s * .08; g.beginPath(); g.moveTo(x + s * .22, y - s * .45); g.lineTo(x + s * .42, y - s * .95); g.stroke(); g.beginPath(); g.ellipse(x + s * .48, y - s * .97, s * .1, s * .05, .3, 0, 6.29); g.fill(); };
+      giraffe(w * .5, h * .69, w * .16); giraffe(w * .6, h * .7, w * .11);
+      g.lineWidth = 2; g.strokeStyle = 'rgba(90,45,32,.7)'; [[.3, .22], [.36, .19], [.42, .24]].forEach(([bx, by]) => { const x = w * bx, y = h * by; g.beginPath(); g.moveTo(x - 8, y - 3); g.quadraticCurveTo(x - 4, y - 6, x, y); g.quadraticCurveTo(x + 4, y - 6, x + 8, y - 3); g.stroke(); });
+    } },
+  { id: 'deepsea', name: '深海のサンゴ礁', sky: ['#2BA7CF', '#136A9E', '#0A3566'], parts: 'bubbles', partC: 'rgba(220,250,255,.55)',
+    hazard: { c1: '#0C2E5C', c2: '#020A1C', foam: '#7FE0FF', title: '深みに落ちた！' },
+    ground: { top: '#F4E0B5', bot: '#D6B27A', line: '#A07F4E', cap: '#FF8FA8', crack: 'rgba(160,127,78,.35)' },
+    paint(g, w, h) {
+      g.save(); g.globalCompositeOperation = 'lighter'; for (let i = 0; i < 5; i++) { const x = w * (.1 + i * .22); const gr = g.createLinearGradient(0, 0, 0, h * .8); gr.addColorStop(0, 'rgba(200,245,255,.16)'); gr.addColorStop(1, 'rgba(200,245,255,0)'); g.fillStyle = gr; g.beginPath(); g.moveTo(x, 0); g.lineTo(x + w * .08, 0); g.lineTo(x + w * .2, h * .8); g.lineTo(x + w * .02, h * .8); g.closePath(); g.fill(); } g.restore();
+      const R = rng(21); g.fillStyle = 'rgba(8,50,90,.55)';
+      for (let k = 0; k < 3; k++) { const cx = w * (.15 + k * .35), cy = h * (.25 + R() * .25); for (let i = 0; i < 9; i++) { const x = cx + (R() - .5) * 80, y = cy + (R() - .5) * 40; g.beginPath(); g.ellipse(x, y, 9, 4, 0, 0, 6.29); g.moveTo(x - 8, y); g.lineTo(x - 14, y - 4); g.lineTo(x - 14, y + 4); g.fill(); } }
+      ridge(g, w, h, h * .8, h * .06, 5, '#0B4670', 26);
+      const coral = (x, y, s, c) => { g.strokeStyle = c; g.lineCap = 'round'; const br = (x, y, a, l, d) => { if (d > 4) return; const x2 = x + Math.cos(a) * l, y2 = y + Math.sin(a) * l; g.lineWidth = Math.max(2, 9 - d * 2) * s; g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke(); br(x2, y2, a - .45, l * .75, d + 1); br(x2, y2, a + .4, l * .72, d + 1); }; br(x, y, -Math.PI / 2, 38 * s, 0); };
+      coral(w * .12, h * .86, 1.2, '#E05A86'); coral(w * .82, h * .84, 1, '#F08A4B'); coral(w * .5, h * .9, .8, '#9D6BE0');
+      g.strokeStyle = '#1F8A6A'; g.lineWidth = 5; for (let i = 0; i < 7; i++) { const x = w * (.25 + i * .09), top = h * (.62 + (i % 3) * .05); g.beginPath(); g.moveTo(x, h * .92); for (let y = h * .92; y > top; y -= 12) g.lineTo(x + Math.sin(y * .05 + i) * 7, y); g.stroke(); }
+    } },
+  { id: 'space', name: '宇宙ステーション', sky: ['#070A24', '#1B1450', '#3A1E6E'], parts: 'stars', partC: '#FFFFFF', dark: true,
+    hazard: { c1: '#7A45E8', c2: '#120530', foam: '#D9C8FF', title: '宇宙に落ちた！' },
+    ground: { top: '#EEF2F8', bot: '#A3B0C6', line: '#5F6D88', cap: '#56E3FF', crack: 'rgba(95,109,136,.4)', panel: true },
+    paint(g, w, h) {
+      const R = rng(7); for (let i = 0; i < 260; i++) { g.fillStyle = 'rgba(255,255,255,' + (.25 + R() * .6) + ')'; const s = R() < .08 ? 1.6 : .8; g.fillRect(R() * w, R() * h * .9, s, s); }
+      glowDisc(g, w * .25, h * .35, w * .45, 'rgba(90,120,255,.22)', 'rgba(90,120,255,0)'); glowDisc(g, w * .8, h * .6, w * .4, 'rgba(255,90,200,.16)', 'rgba(255,90,200,0)');
+      const px = w * .74, py = h * .2, pr = w * .15; const pg = g.createLinearGradient(px - pr, py - pr, px + pr, py + pr); pg.addColorStop(0, '#FFC27A'); pg.addColorStop(1, '#C0503A'); g.fillStyle = pg; g.beginPath(); g.arc(px, py, pr, 0, 6.29); g.fill();
+      g.strokeStyle = 'rgba(255,225,180,.8)'; g.lineWidth = 4; g.beginPath(); g.ellipse(px, py, pr * 1.7, pr * .38, -.3, 0, 6.29); g.stroke();
+      g.fillStyle = pg; g.beginPath(); g.arc(px, py, pr, Math.PI + .3, 2 * Math.PI + .3); g.fill();
+      g.fillStyle = '#C9D2E6'; g.beginPath(); g.arc(w * .12, h * .12, w * .045, 0, 6.29); g.fill();
+      const sx = w * .3, sy = h * .55; g.save(); g.globalAlpha = .55; g.fillStyle = '#39406E'; g.fillRect(sx - 60, sy - 8, 120, 16); g.fillRect(sx - 12, sy - 30, 24, 60);
+      g.fillStyle = '#2A6FB0'; [-1, 1].forEach(d => { for (let k = 0; k < 3; k++) g.fillRect(sx + d * (70 + k * 22) - 10, sy - 22, 18, 44); });
+      g.fillStyle = '#FFD86B'; for (let k = 0; k < 3; k++) g.fillRect(sx - 6, sy - 22 + k * 14, 12, 5); g.restore();
+    } },
+  { id: 'neon', name: 'ネオンの夜の街', sky: ['#12072E', '#3A1260', '#8A2A7A'], parts: 'rain', partC: 'rgba(190,210,255,.35)', dark: true,
+    hazard: { c1: '#2A1E70', c2: '#07031E', foam: '#FF6FD8', title: '運河に落ちた！' },
+    ground: { top: '#DCD6EC', bot: '#9A91B8', line: '#554C78', cap: '#FF4FA8', crack: 'rgba(85,76,120,.4)' },
+    paint(g, w, h) {
+      g.fillStyle = '#F4E6FF'; g.beginPath(); g.arc(w * .2, h * .15, w * .07, 0, 6.29); g.fill(); glowDisc(g, w * .2, h * .15, w * .2, 'rgba(244,230,255,.25)', 'rgba(244,230,255,0)');
+      const R = rng(12); const city = (base, maxH, color, win, seed) => { const r = rng(seed); let x = -10; while (x < w + 10) { const bw = 30 + r() * 50, bh = maxH * (.4 + r() * .6); g.fillStyle = color; g.fillRect(x, base - bh, bw, bh + 400); if (win) { for (let wy = base - bh + 10; wy < base - 8; wy += 14) for (let wx = x + 6; wx < x + bw - 8; wx += 11) if (r() < .35) { g.fillStyle = r() < .5 ? 'rgba(255,220,120,.85)' : 'rgba(120,230,255,.75)'; g.fillRect(wx, wy, 5, 7); } } x += bw + 4; } };
+      city(h * .72, h * .38, '#2C1650', false, 3); city(h * .8, h * .42, '#170A34', true, 9);
+      [['#FF4FA8', .15, .5], ['#37E6FF', .62, .46], ['#FFE24F', .83, .58]].forEach(([c, x, y]) => { g.save(); g.globalAlpha = .4; g.shadowColor = c; g.shadowBlur = 10; g.strokeStyle = c; g.lineWidth = 3; g.strokeRect(w * x, h * y, w * .12, h * .035); g.restore(); });
+      g.save(); g.shadowColor = '#FF4FA8'; g.shadowBlur = 12; g.fillStyle = '#FF4FA8'; g.font = '900 ' + Math.round(w * .05) + 'px sans-serif'; g.textAlign = 'center'; g.fillText('PENGU', w * .45, h * .42); g.restore(); void R;
+    } },
+  { id: 'desert', name: '砂漠のピラミッド', sky: ['#6EC3F0', '#BFE6F5', '#FFE3A8'], parts: 'sand', partC: 'rgba(214,160,90,.5)',
+    hazard: { c1: '#D9A45A', c2: '#8C5A24', foam: '#F7DCA6', title: '流砂にのまれた！' },
+    ground: { top: '#F6DBA5', bot: '#DDB172', line: '#A7773C', cap: '#FFF1C8', crack: 'rgba(167,119,60,.35)' },
+    paint(g, w, h) {
+      glowDisc(g, w * .82, h * .12, w * .25, 'rgba(255,255,230,.9)', 'rgba(255,255,230,0)');
+      const pyr = (x, y, s) => { g.fillStyle = '#EDC074'; g.beginPath(); g.moveTo(x - s, y); g.lineTo(x, y - s * .9); g.lineTo(x + s, y); g.fill(); g.fillStyle = '#C48B42'; g.beginPath(); g.moveTo(x, y - s * .9); g.lineTo(x + s, y); g.lineTo(x + s * .15, y); g.fill(); };
+      pyr(w * .3, h * .66, w * .26); pyr(w * .7, h * .68, w * .17); pyr(w * .9, h * .69, w * .1);
+      ridge(g, w, h, h * .72, h * .03, 4, '#F1C77E', 50); ridge(g, w, h, h * .8, h * .04, 9, '#E3AD63', 40);
+      const cactus = (x, y, s) => { g.fillStyle = '#5E9442'; const r = (a, b, c, d) => { g.beginPath(); g.roundRect(a, b, c, d, c / 2); g.fill(); }; r(x - s * .1, y - s, s * .2, s); r(x - s * .38, y - s * .7, s * .14, s * .35); r(x - s * .38, y - s * .45, s * .3, s * .13); r(x + s * .24, y - s * .8, s * .14, s * .4); r(x + s * .08, y - s * .52, s * .3, s * .13); };
+      cactus(w * .1, h * .8, w * .14); cactus(w * .84, h * .82, w * .1);
+    } },
+  { id: 'candy', name: 'お菓子の国', sky: ['#FFB8DA', '#FFD9EC', '#FFF3D8'], parts: 'sprinkles', partC: '',
+    hazard: { c1: '#8C4B2B', c2: '#4A2312', foam: '#F9CFAE', title: 'チョコの沼に落ちた！' },
+    ground: { top: '#FFF8EE', bot: '#F0C089', line: '#C48A52', cap: '#FF8FBC', crack: 'rgba(196,138,82,.3)', drip: true },
+    paint(g, w, h) {
+      puff(g, w * .2, h * .16, w * .07, 'rgba(255,255,255,.9)'); puff(g, w * .72, h * .1, w * .06, 'rgba(255,230,245,.95)'); puff(g, w * .55, h * .28, w * .05, 'rgba(255,255,255,.8)');
+      const hill = (x, y, r, c, stripe) => { g.save(); g.fillStyle = c; g.beginPath(); g.arc(x, y, r, Math.PI, 0); g.fill(); g.clip(); g.strokeStyle = stripe; g.lineWidth = r * .12; for (let k = -r * 2; k < r * 2; k += r * .35) { g.beginPath(); g.moveTo(x + k, y); g.lineTo(x + k + r, y - r); g.stroke(); } g.restore(); };
+      hill(w * .2, h * .8, w * .32, '#B9F0D8', 'rgba(255,255,255,.5)'); hill(w * .78, h * .82, w * .36, '#D7C4FF', 'rgba(255,255,255,.45)'); hill(w * .5, h * .9, w * .3, '#FFE08A', 'rgba(255,140,170,.35)');
+      const lolli = (x, y, s, c) => { g.strokeStyle = '#FFFFFF'; g.lineWidth = s * .12; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - s * 2); g.stroke(); g.fillStyle = c; g.beginPath(); g.arc(x, y - s * 2.4, s * .7, 0, 6.29); g.fill(); g.strokeStyle = 'rgba(255,255,255,.85)'; g.lineWidth = s * .12; g.beginPath(); for (let a = 0; a < 12; a += .2) { const r = a / 12 * s * .6; g.lineTo(x + Math.cos(a) * r, y - s * 2.4 + Math.sin(a) * r); } g.stroke(); };
+      lolli(w * .1, h * .72, w * .06, '#FF6FA3'); lolli(w * .9, h * .7, w * .07, '#5CC8FF'); lolli(w * .62, h * .66, w * .045, '#FFB23F');
+    } },
+  { id: 'sakura', name: '夜桜の都', sky: ['#171C4A', '#3A3478', '#7A5A9E'], parts: 'petals', partC: '#F9B8D2', dark: true,
+    hazard: { c1: '#34479A', c2: '#0F1440', foam: '#F7C2D8', title: '川に落ちた！' },
+    ground: { top: '#DCD8E8', bot: '#A29CBC', line: '#6B6589', cap: '#7CBF79', crack: 'rgba(107,101,137,.35)' },
+    paint(g, w, h) {
+      glowDisc(g, w * .72, h * .18, w * .3, 'rgba(255,240,210,.3)', 'rgba(255,240,210,0)'); g.fillStyle = '#FFF3D6'; g.beginPath(); g.arc(w * .72, h * .18, w * .11, 0, 6.29); g.fill();
+      ridge(g, w, h, h * .6, h * .06, 14, '#2B2B63', 36);
+      const px = w * .3, base = h * .74; g.fillStyle = '#15163A'; for (let k = 0; k < 4; k++) { const y = base - k * h * .07, s = w * (.14 - k * .025); g.beginPath(); g.moveTo(px - s, y); g.quadraticCurveTo(px, y - h * .035, px + s, y); g.lineTo(px + s * .6, y - h * .012); g.lineTo(px - s * .6, y - h * .012); g.closePath(); g.fill(); g.fillRect(px - s * .45, y - h * .012, s * .9, h * .07 - h * .012); }
+      g.fillRect(px - 2, base - h * .34, 4, h * .06);
+      const tree = (x, y, s) => { g.strokeStyle = '#1E1633'; g.lineWidth = s * .08; g.beginPath(); g.moveTo(x, y); g.lineTo(x, y - s * .6); g.lineTo(x - s * .3, y - s * .9); g.moveTo(x, y - s * .6); g.lineTo(x + s * .35, y - s * .85); g.stroke(); const R = rng(Math.round(x)); for (let i = 0; i < 26; i++) { g.fillStyle = 'rgba(' + (245 + R() * 10 | 0) + ',' + (160 + R() * 50 | 0) + ',' + (195 + R() * 30 | 0) + ',.8)'; g.beginPath(); g.arc(x + (R() - .5) * s * 1.1, y - s * .85 + (R() - .5) * s * .5, s * (.08 + R() * .1), 0, 6.29); g.fill(); } };
+      tree(w * .8, h * .8, w * .3); tree(w * .08, h * .82, w * .22);
+      [[.55, .66], [.62, .7], [.47, .7]].forEach(([x, y]) => { glowDisc(g, w * x, h * y, 16, 'rgba(255,190,110,.7)', 'rgba(255,190,110,0)'); g.fillStyle = '#FF9A4A'; g.beginPath(); g.ellipse(w * x, h * y, 4, 6, 0, 0, 6.29); g.fill(); });
+    } },
+  { id: 'volcano', name: '火山の島', sky: ['#1E0A10', '#5A1818', '#B8421E'], parts: 'embers', partC: '#FFB04A', dark: true,
+    hazard: { c1: '#FF8A1F', c2: '#B01E0C', foam: '#FFE28A', title: '溶岩に落ちた！', glow: true },
+    ground: { top: '#7A6A66', bot: '#3E3333', line: '#231B1B', cap: '#FF7A2E', crack: 'rgba(255,122,46,.45)' },
+    paint(g, w, h) {
+      ridge(g, w, h, h * .66, h * .04, 31, '#3A1414', 40);
+      const vx = w * .55, vy = h * .72; g.fillStyle = '#1A0808'; g.beginPath(); g.moveTo(vx - w * .6, vy); g.lineTo(vx - w * .1, h * .3); g.lineTo(vx + w * .1, h * .3); g.lineTo(vx + w * .6, vy); g.lineTo(vx + w, h); g.lineTo(vx - w, h); g.fill();
+      glowDisc(g, vx, h * .3, w * .3, 'rgba(255,140,40,.55)', 'rgba(255,90,20,0)');
+      g.strokeStyle = 'rgba(255,106,26,.55)'; g.lineWidth = 3; g.lineCap = 'round'; [[-.04, .05], [.03, .08], [.07, .04]].forEach(([dx, len], i) => { g.beginPath(); g.moveTo(vx + dx * w, h * .3); for (let y = h * .3; y < h * (.3 + len); y += 8) g.lineTo(vx + dx * w + Math.sin(y * .05 + i) * 6 + (dx * (y - h * .3)), y); g.stroke(); });
+      [[.45, .2, .08], [.6, .13, .1], [.52, .06, .12]].forEach(([x, y, s]) => puff(g, w * x, h * y, w * s, 'rgba(60,40,40,.55)'));
+    } },
+  { id: 'skyland', name: '天空の島', sky: ['#5AAEFF', '#9FD3FF', '#E6F5FF'], parts: 'dust', partC: 'rgba(255,255,255,.8)',
+    hazard: { c1: '#FFFFFF', c2: '#B8D3EF', foam: '#FFFFFF', title: '雲の下へ落ちた！', cloud: true },
+    ground: { top: '#B4E27F', bot: '#C29466', line: '#86603C', cap: '#6CC04A', crack: 'rgba(134,96,60,.35)' },
+    paint(g, w, h) {
+      glowDisc(g, w * .15, h * .1, w * .35, 'rgba(255,255,220,.8)', 'rgba(255,255,220,0)');
+      const island = (x, y, s) => { g.fillStyle = '#9C7350'; g.beginPath(); g.moveTo(x - s, y); g.lineTo(x + s, y); g.lineTo(x + s * .3, y + s * .9); g.lineTo(x - s * .2, y + s * .7); g.closePath(); g.fill(); g.fillStyle = '#7CC957'; g.beginPath(); g.ellipse(x, y, s * 1.05, s * .18, 0, 0, 6.29); g.fill(); g.strokeStyle = 'rgba(255,255,255,.7)'; g.lineWidth = s * .08; g.beginPath(); g.moveTo(x + s * .6, y + s * .1); g.lineTo(x + s * .62, y + s * 1.6); g.stroke(); g.fillStyle = '#2F7A3E'; g.beginPath(); g.arc(x - s * .4, y - s * .25, s * .22, 0, 6.29); g.arc(x - s * .15, y - s * .32, s * .2, 0, 6.29); g.fill(); };
+      island(w * .75, h * .3, w * .14); island(w * .25, h * .48, w * .09);
+      puff(g, w * .1, h * .7, w * .12, 'rgba(255,255,255,.95)'); puff(g, w * .5, h * .74, w * .15, 'rgba(255,255,255,.9)'); puff(g, w * .9, h * .68, w * .12, 'rgba(255,255,255,.95)');
+      const bx = w * .5, by = h * .17, br = w * .06; g.fillStyle = '#FF7A59'; g.beginPath(); g.arc(bx, by, br, 0, 6.29); g.fill(); g.fillStyle = '#FFD166'; g.beginPath(); g.ellipse(bx, by, br * .35, br, 0, 0, 6.29); g.fill();
+      g.strokeStyle = '#6B4A2E'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(bx - br * .7, by + br * .7); g.lineTo(bx - br * .3, by + br * 1.5); g.moveTo(bx + br * .7, by + br * .7); g.lineTo(bx + br * .3, by + br * 1.5); g.stroke(); g.fillStyle = '#8A5A34'; g.fillRect(bx - br * .35, by + br * 1.5, br * .7, br * .45);
+    } },
+];
+const MORE_THEMES = {
+  tropical: { id: 'tropical', name: '南の島のビーチ', sky: ['#3FC3F2', '#8FE0F7', '#E6FAFF'], parts: 'dust', partC: 'rgba(255,255,255,.75)',
+    hazard: { c1: '#1FB5C8', c2: '#0A6E96', foam: '#FFFFFF', title: '海に落ちた！' },
+    ground: { top: '#FFF0C8', bot: '#EBC88A', line: '#B9925A', cap: '#FFFFFF', crack: 'rgba(185,146,90,.3)' },
+    paint(g, w, h) {
+      glowDisc(g, w * .8, h * .14, w * .3, 'rgba(255,255,210,.9)', 'rgba(255,255,210,0)');
+      puff(g, w * .25, h * .18, w * .06, 'rgba(255,255,255,.95)'); puff(g, w * .6, h * .1, w * .045, 'rgba(255,255,255,.9)');
+      g.fillStyle = '#2FB7D6'; g.fillRect(0, h * .6, w, h); g.fillStyle = 'rgba(255,255,255,.5)'; for (let i = 0; i < 12; i++) g.fillRect((i * 97) % w, h * (.62 + (i % 4) * .03), 26, 2);
+      g.fillStyle = '#3E8F5E'; g.beginPath(); g.ellipse(w * .78, h * .61, w * .22, h * .05, 0, Math.PI, 0); g.fill();
+      const palm = (x, y, s, lean) => { g.strokeStyle = '#8A5A34'; g.lineWidth = s * .07; g.lineCap = 'round'; g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + lean * s * .3, y - s * .5, x + lean * s * .2, y - s); g.stroke(); const tx = x + lean * s * .2, ty = y - s; g.strokeStyle = '#2E9E4F'; g.lineWidth = s * .07; for (let a = 0; a < 6; a++) { const an = -Math.PI + a * Math.PI / 5; g.beginPath(); g.moveTo(tx, ty); g.quadraticCurveTo(tx + Math.cos(an) * s * .35, ty + Math.sin(an) * s * .35 - s * .1, tx + Math.cos(an) * s * .55, ty + Math.sin(an) * s * .3 + s * .12); g.stroke(); } g.fillStyle = '#6B4424'; g.beginPath(); g.arc(tx - 4, ty + 6, 5, 0, 6.29); g.arc(tx + 5, ty + 7, 5, 0, 6.29); g.fill(); };
+      g.fillStyle = '#FBE3AE'; g.beginPath(); g.moveTo(0, h * .82); g.quadraticCurveTo(w * .3, h * .76, w * .55, h * .84); g.lineTo(w * .55, h); g.lineTo(0, h); g.fill();
+      palm(w * .12, h * .82, w * .35, 1); palm(w * .82, h * .62, w * .2, -1);
+    } },
+  jungle: { id: 'jungle', name: 'ジャングルの遺跡', sky: ['#7FD08A', '#B9E6A8', '#E7F7D2'], parts: 'dust', partC: 'rgba(255,255,190,.8)',
+    hazard: { c1: '#3E8C6E', c2: '#18463A', foam: '#C8F2DC', title: '沼に落ちた！' },
+    ground: { top: '#B7B39A', bot: '#827D66', line: '#57533F', cap: '#5DB34A', crack: 'rgba(87,83,63,.4)' },
+    paint(g, w, h) {
+      for (let k = 0; k < 3; k++) { g.save(); g.globalCompositeOperation = 'lighter'; const gr = g.createLinearGradient(0, 0, 0, h * .7); gr.addColorStop(0, 'rgba(255,255,200,.25)'); gr.addColorStop(1, 'rgba(255,255,200,0)'); g.fillStyle = gr; g.beginPath(); const x = w * (.2 + k * .3); g.moveTo(x, 0); g.lineTo(x + 30, 0); g.lineTo(x + 90, h * .7); g.lineTo(x + 40, h * .7); g.fill(); g.restore(); }
+      const tx = w * .5, ty = h * .72; g.save(); g.globalAlpha = .5; g.fillStyle = '#8C8A6E'; for (let k = 0; k < 4; k++) { const s = w * (.26 - k * .05); g.fillRect(tx - s, ty - (k + 1) * h * .055, s * 2, h * .055); } g.fillStyle = '#4E4B38'; g.fillRect(tx - 12, ty - h * .22 - 22, 24, 22);
+      g.fillStyle = 'rgba(60,110,50,.6)'; g.fillRect(tx - w * .26, ty - h * .055, w * .52, 4); g.restore();
+      const leaf = (x, y, s, a, c) => { g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = c; g.beginPath(); g.ellipse(s * .5, 0, s * .5, s * .16, 0, 0, 6.29); g.fill(); g.restore(); };
+      const R = rng(44); for (let i = 0; i < 18; i++) leaf(R() < .5 ? 0 : w, h * (R() * .9), w * (.18 + R() * .15), (R() < .5 ? 0 : Math.PI) + (R() - .5) * 1.2, R() < .5 ? '#2F7D3A' : '#3E9A45');
+      g.strokeStyle = '#2E6B33'; g.lineWidth = 3; for (let i = 0; i < 5; i++) { const x = w * (.15 + i * .18); g.beginPath(); g.moveTo(x, 0); g.quadraticCurveTo(x + 20, h * .15, x - 6, h * (.2 + (i % 3) * .08)); g.stroke(); }
+    } },
+  autumn: { id: 'autumn', name: '紅葉の山', sky: ['#8FC6E8', '#F7D9B0', '#FFEBD0'], parts: 'petals', partC: '#E8622A',
+    hazard: { c1: '#4F8FB8', c2: '#23506E', foam: '#F9D2B0', title: '川に落ちた！' },
+    ground: { top: '#D8C2A0', bot: '#A98760', line: '#79593A', cap: '#E86A2E', crack: 'rgba(121,89,58,.35)' },
+    paint(g, w, h) {
+      ridge(g, w, h, h * .5, h * .08, 17, '#B8866A', 40); ridge(g, w, h, h * .62, h * .06, 23, '#C8552E', 32); ridge(g, w, h, h * .72, h * .05, 29, '#E08A2E', 26);
+      const R = rng(61); g.globalAlpha = .85; for (let i = 0; i < 34; i++) { const x = R() * w, y = h * (.68 + R() * .18), r = 10 + R() * 12; g.fillStyle = ['#E0482A', '#F2A13A', '#C7302A', '#F7C64A'][i % 4]; g.beginPath(); g.arc(x, y, r, 0, 6.29); g.arc(x + r * .7, y + r * .3, r * .7, 0, 6.29); g.fill(); } g.globalAlpha = 1;
+    } },
+  dino: { id: 'dino', name: '恐竜の谷', sky: ['#F4A259', '#F7C987', '#DDEBB6'], parts: 'dust', partC: 'rgba(255,230,180,.7)',
+    hazard: { c1: '#5B8C3A', c2: '#2B4A1C', foam: '#D8F0A8', title: '沼に落ちた！' },
+    ground: { top: '#D9A873', bot: '#A87447', line: '#74502E', cap: '#7FAE3E', crack: 'rgba(116,80,46,.35)' },
+    paint(g, w, h) {
+      ridge(g, w, h, h * .6, h * .1, 33, '#B06A48', 36);
+      const vx = w * .85; g.fillStyle = '#7A4034'; g.beginPath(); g.moveTo(vx - w * .25, h * .62); g.lineTo(vx - w * .05, h * .38); g.lineTo(vx + w * .05, h * .38); g.lineTo(vx + w * .25, h * .62); g.fill(); puff(g, vx, h * .32, w * .05, 'rgba(120,90,80,.5)');
+      const sil = '#3C4A2A'; g.fillStyle = sil; g.strokeStyle = sil; g.lineCap = 'round'; g.globalAlpha = .42;
+      const bronto = (x, y, s) => { g.beginPath(); g.ellipse(x, y - s * .3, s * .45, s * .22, 0, 0, 6.29); g.fill(); g.lineWidth = s * .1; [-.3, -.12, .12, .3].forEach(d => { g.beginPath(); g.moveTo(x + d * s, y - s * .25); g.lineTo(x + d * s, y); g.stroke(); }); g.lineWidth = s * .1; g.beginPath(); g.moveTo(x + s * .35, y - s * .4); g.quadraticCurveTo(x + s * .7, y - s * .6, x + s * .65, y - s * 1.05); g.stroke(); g.beginPath(); g.ellipse(x + s * .7, y - s * 1.08, s * .1, s * .06, .2, 0, 6.29); g.fill(); g.lineWidth = s * .08; g.beginPath(); g.moveTo(x - s * .4, y - s * .3); g.quadraticCurveTo(x - s * .8, y - s * .25, x - s, y - s * .1); g.stroke(); };
+      bronto(w * .3, h * .66, w * .22); bronto(w * .62, h * .66, w * .12); g.globalAlpha = 1;
+      g.lineWidth = 2; g.strokeStyle = 'rgba(60,40,30,.75)'; [[.2, .2], [.28, .16]].forEach(([x, y]) => { const px = w * x, py = h * y; g.beginPath(); g.moveTo(px - 16, py); g.lineTo(px, py + 4); g.lineTo(px + 16, py - 2); g.moveTo(px, py + 4); g.lineTo(px + 6, py - 4); g.stroke(); });
+      g.fillStyle = '#4E7A2E'; for (let i = 0; i < 6; i++) { const x = w * (.05 + i * .19), y = h * .78; g.beginPath(); for (let a = 0; a < 7; a++) { const an = -Math.PI + a * Math.PI / 6; g.moveTo(x, y); g.ellipse(x + Math.cos(an) * 16, y + Math.sin(an) * 16, 14, 4, an, 0, 6.29); } g.fill(); }
+    } },
+  mushroom: { id: 'mushroom', name: 'キノコの森', sky: ['#2A2360', '#4B3C8C', '#7D63B8'], parts: 'embers', partC: '#C9FF7A', dark: true,
+    hazard: { c1: '#3A2C7A', c2: '#120B30', foam: '#B9F7FF', title: '闇の沼に落ちた！' },
+    ground: { top: '#CFC3E6', bot: '#8E7FB2', line: '#584A7E', cap: '#6FD7A0', crack: 'rgba(88,74,126,.4)' },
+    paint(g, w, h) {
+      const R = rng(71); for (let i = 0; i < 8; i++) { const x = R() * w; g.fillStyle = 'rgba(20,14,50,.7)'; g.fillRect(x, 0, 18 + R() * 20, h); }
+      const shroom = (x, y, s, c) => { g.fillStyle = '#EDE3D0'; g.beginPath(); g.roundRect(x - s * .12, y - s * .7, s * .24, s * .7, s * .08); g.fill(); glowDisc(g, x, y - s * .75, s * .9, c.replace(')', ',.35)').replace('rgb', 'rgba'), 'rgba(0,0,0,0)'); g.fillStyle = c; g.beginPath(); g.ellipse(x, y - s * .72, s * .5, s * .32, 0, Math.PI, 0); g.fill(); g.fillStyle = 'rgba(255,255,255,.8)'; [[-.25, -.85], [.1, -.92], [.3, -.78]].forEach(([dx, dy]) => { g.beginPath(); g.arc(x + dx * s, y + dy * s, s * .06, 0, 6.29); g.fill(); }); };
+      shroom(w * .15, h * .8, w * .3, 'rgb(255,90,140)'); shroom(w * .82, h * .78, w * .36, 'rgb(90,200,255)'); shroom(w * .5, h * .84, w * .18, 'rgb(190,120,255)'); shroom(w * .34, h * .86, w * .12, 'rgb(255,200,80)');
+    } },
+  halloween: { id: 'halloween', name: 'ハロウィンの夜', sky: ['#1C0F33', '#3F1E52', '#E0703A'], parts: 'embers', partC: '#FFB347', dark: true,
+    hazard: { c1: '#4E2A7A', c2: '#140826', foam: '#B6FF6B', title: '魔女の沼に落ちた！' },
+    ground: { top: '#B7AFC4', bot: '#6E6582', line: '#3E3652', cap: '#FF8A2A', crack: 'rgba(62,54,82,.45)' },
+    paint(g, w, h) {
+      g.fillStyle = '#FFE9A8'; g.beginPath(); g.arc(w * .75, h * .2, w * .13, 0, 6.29); g.fill(); glowDisc(g, w * .75, h * .2, w * .3, 'rgba(255,233,168,.25)', 'rgba(255,233,168,0)');
+      g.fillStyle = '#1A0D24'; const cx = w * .3, base = h * .72; g.fillRect(cx - w * .16, base - h * .18, w * .32, h * .3); [[-.16, .28], [.1, .34], [-.02, .24]].forEach(([dx, hh]) => { const x = cx + dx * w; g.fillRect(x, base - h * hh, w * .07, h * hh); g.beginPath(); g.moveTo(x - 6, base - h * hh); g.lineTo(x + w * .035, base - h * hh - h * .06); g.lineTo(x + w * .07 + 6, base - h * hh); g.fill(); });
+      g.fillStyle = '#FFC24A'; [[-.1, .14], [.02, .12], [.12, .2]].forEach(([dx, y]) => g.fillRect(cx + dx * w, base - h * y, 8, 10));
+      g.fillStyle = '#1A0D24'; [[.6, .1], [.66, .13], [.55, .15]].forEach(([x, y]) => { const px = w * x, py = h * y; g.beginPath(); g.moveTo(px, py); g.quadraticCurveTo(px - 8, py - 8, px - 16, py - 2); g.quadraticCurveTo(px - 10, py + 2, px, py + 4); g.quadraticCurveTo(px + 10, py + 2, px + 16, py - 2); g.quadraticCurveTo(px + 8, py - 8, px, py); g.fill(); });
+      const pump = (x, y, s) => { g.fillStyle = '#FF8A2A'; g.beginPath(); g.ellipse(x - s * .3, y, s * .45, s * .5, 0, 0, 6.29); g.ellipse(x + s * .3, y, s * .45, s * .5, 0, 0, 6.29); g.ellipse(x, y, s * .5, s * .55, 0, 0, 6.29); g.fill(); g.fillStyle = '#3A2410'; g.beginPath(); g.moveTo(x - s * .3, y - s * .15); g.lineTo(x - s * .15, y - s * .3); g.lineTo(x - s * .05, y - s * .12); g.moveTo(x + s * .3, y - s * .15); g.lineTo(x + s * .15, y - s * .3); g.lineTo(x + s * .05, y - s * .12); g.fill(); g.beginPath(); g.ellipse(x, y + s * .15, s * .3, s * .1, 0, 0, Math.PI); g.fill(); g.fillStyle = '#4E7A2E'; g.fillRect(x - 3, y - s * .7, 6, s * .2); };
+      pump(w * .12, h * .82, w * .08); pump(w * .88, h * .8, w * .1);
+    } },
+  moon: { id: 'moon', name: '月面基地', sky: ['#000008', '#0B0B24', '#1B1B3A'], parts: 'stars', partC: '#FFFFFF', dark: true,
+    hazard: { c1: '#5A5A7A', c2: '#15152A', foam: '#E6E6FF', title: 'クレーターに落ちた！' },
+    ground: { top: '#E4E4EA', bot: '#A7A7B4', line: '#6C6C7C', cap: '#FFFFFF', crack: 'rgba(108,108,124,.4)', panel: true },
+    paint(g, w, h) {
+      const R = rng(81); for (let i = 0; i < 300; i++) { g.fillStyle = 'rgba(255,255,255,' + (.2 + R() * .7) + ')'; g.fillRect(R() * w, R() * h * .7, .9, .9); }
+      const ex = w * .72, ey = h * .2, er = w * .14; g.fillStyle = '#2F6FD8'; g.beginPath(); g.arc(ex, ey, er, 0, 6.29); g.fill(); g.fillStyle = '#4FB06A'; g.beginPath(); g.ellipse(ex - er * .3, ey - er * .2, er * .35, er * .25, .5, 0, 6.29); g.ellipse(ex + er * .35, ey + er * .3, er * .25, er * .2, -.3, 0, 6.29); g.fill(); glowDisc(g, ex, ey, er * 1.4, 'rgba(120,180,255,.2)', 'rgba(120,180,255,0)');
+      g.fillStyle = 'rgba(255,255,255,.7)'; g.beginPath(); g.ellipse(ex + er * .1, ey - er * .5, er * .4, er * .1, .2, 0, 6.29); g.fill();
+      ridge(g, w, h, h * .7, h * .04, 88, '#8C8C9A', 50); g.fillStyle = '#6E6E7E'; [[.2, .75, 40], [.62, .78, 60], [.85, .73, 26]].forEach(([x, y, r]) => { g.beginPath(); g.ellipse(w * x, h * y, r, r * .25, 0, 0, 6.29); g.fill(); });
+      g.fillStyle = '#DCE3F0'; g.beginPath(); g.arc(w * .4, h * .7, w * .08, Math.PI, 0); g.fill(); g.fillStyle = '#56E3FF'; g.fillRect(w * .4 - 6, h * .7 - w * .05, 12, 6);
+      g.strokeStyle = '#DCE3F0'; g.lineWidth = 2; g.beginPath(); g.moveTo(w * .55, h * .7); g.lineTo(w * .55, h * .62); g.stroke(); g.fillStyle = '#FF5C8A'; g.fillRect(w * .55, h * .62, 16, 10);
+    } },
+};
+const TH_BY = {}; BASE_THEMES.concat(Object.values(MORE_THEMES)).forEach(x => { TH_BY[x.id] = x; });
+// 3 stages per world, in play order (the last world is the aurora night); the secret stage is on the moon
+const THEMES = ['ice', 'tropical', 'savanna', 'deepsea', 'jungle', 'desert', 'candy', 'neon', 'autumn', 'dino', 'mushroom', 'halloween', 'sakura', 'space', 'volcano', 'skyland'].map(id => TH_BY[id]).concat([{ id: 'aurora', name: 'オーロラの果て', ice: true, forceDark: true }]);
+const SECRET_THEME = TH_BY.moon;
+const levelIndex = new Map(LEVELS.map((L, i) => [L, i]));
+function themeOf(L) { if (!L) return THEMES[0]; if (L.secret) return SECRET_THEME; return THEMES[Math.min(THEMES.length - 1, Math.floor((levelIndex.get(L) || 0) / 3))]; }
+let TH = THEMES[0], bgCache = null, bgKey = '';
+function hz() { return TH.hazard || (TH.forceDark ? { c1: '#1B5F92', c2: '#0A2C4C', foam: '#FFFFFF' } : { c1: C.sea1, c2: C.sea2, foam: '#FFFFFF' }); }
+function paintBackdrop() {
+  const key = TH.id + cw + 'x' + ch + '@' + DPR;
+  if (bgKey === key) return bgCache;
+  bgKey = key; bgCache = document.createElement('canvas'); bgCache.width = Math.max(1, cw * DPR | 0); bgCache.height = Math.max(1, ch * DPR | 0);
+  const g = bgCache.getContext('2d'); g.scale(DPR, DPR);
+  const gr = g.createLinearGradient(0, 0, 0, ch); TH.sky.forEach((c, i) => gr.addColorStop(i / (TH.sky.length - 1), c)); g.fillStyle = gr; g.fillRect(0, 0, cw, ch);
+  try { TH.paint(g, cw, ch); } catch (e) {}
+  return bgCache;
+}
+const SPRINKLE = ['#FF5C8A', '#FFD23F', '#5CD6FF', '#8BE36B', '#B98CFF', '#FFFFFF'];
+function drawParticles() {
+  const kind = TH.ice ? 'snow' : TH.parts;
+  for (let i = 0; i < flakes.length; i++) {
+    const f = flakes[i], x = f.x * cw, y = f.y * ch;
+    if (kind === 'snow') { f.y += f.v * .0012; f.x += Math.sin(t * .02 + f.s * 5) * .0004; if (f.y > 1) { f.y = 0; f.x = Math.random(); } ctx.fillStyle = C.dark || TH.forceDark ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.arc(x, y, f.s, 0, 6.28); ctx.fill(); }
+    else if (kind === 'dust') { f.y -= f.v * .0003; f.x += Math.sin(t * .01 + i) * .0003; if (f.y < 0) { f.y = 1; f.x = Math.random(); } ctx.globalAlpha = .4 + Math.sin(t * .05 + i) * .3; ctx.fillStyle = TH.partC; ctx.beginPath(); ctx.arc(x, y, f.s * .9, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1; }
+    else if (kind === 'bubbles') { f.y -= f.v * .0016; f.x += Math.sin(t * .04 + i) * .0005; if (f.y < 0) { f.y = 1; f.x = Math.random(); } ctx.strokeStyle = TH.partC; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.arc(x, y, f.s * 2.2, 0, 6.28); ctx.stroke(); }
+    else if (kind === 'stars') { ctx.globalAlpha = .3 + (Math.sin(t * .06 + i * 1.7) * .5 + .5) * .7; ctx.fillStyle = TH.partC; const s = f.s * 1.2; ctx.fillRect(x - s / 2, y - s * 1.5, s, s * 3); ctx.fillRect(x - s * 1.5, y - s / 2, s * 3, s); ctx.globalAlpha = 1; }
+    else if (kind === 'rain') { f.y += f.v * .012 + .006; f.x -= .0015; if (f.y > 1) { f.y = 0; f.x = Math.random() * 1.2; } ctx.strokeStyle = TH.partC; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 4, y + 16); ctx.stroke(); }
+    else if (kind === 'sand') { f.x += f.v * .003 + .001; f.y += Math.sin(t * .03 + i) * .0004; if (f.x > 1) { f.x = 0; f.y = .3 + Math.random() * .7; } ctx.fillStyle = TH.partC; ctx.fillRect(x, y, f.s * 3, f.s * .8); }
+    else if (kind === 'sprinkles') { f.y += f.v * .0014; if (f.y > 1) { f.y = 0; f.x = Math.random(); } ctx.save(); ctx.translate(x, y); ctx.rotate(t * .03 * f.v + i); ctx.fillStyle = SPRINKLE[i % SPRINKLE.length]; ctx.beginPath(); ctx.roundRect(-4, -1.5, 8, 3, 1.5); ctx.fill(); ctx.restore(); }
+    else if (kind === 'petals') { f.y += f.v * .0014; f.x += Math.sin(t * .02 + i) * .0009; if (f.y > 1) { f.y = 0; f.x = Math.random(); } ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(t * .03 + i) * 1.5); ctx.fillStyle = TH.partC; ctx.beginPath(); ctx.ellipse(0, 0, 4.5, 2.4, 0, 0, 6.28); ctx.fill(); ctx.restore(); }
+    else if (kind === 'embers') { f.y -= f.v * .002; f.x += Math.sin(t * .05 + i) * .0006; if (f.y < 0) { f.y = 1; f.x = Math.random(); } ctx.globalAlpha = .5 + Math.sin(t * .2 + i) * .4; ctx.fillStyle = TH.partC; ctx.beginPath(); ctx.arc(x, y, f.s * 1.1, 0, 6.28); ctx.fill(); ctx.globalAlpha = 1; }
+  }
+}
 function render() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   // sky
-  const g = ctx.createLinearGradient(0, 0, 0, ch); g.addColorStop(0, C.sky1); g.addColorStop(1, C.sky2);
-  ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
-  if (C.dark) drawAurora();
-  // flakes
-  ctx.fillStyle = C.dark ? 'rgba(255,255,255,.55)' : 'rgba(255,255,255,.9)';
-  for (const f of flakes) { f.y += f.v * .0012; f.x += Math.sin(t * .02 + f.s * 5) * .0004; if (f.y > 1) { f.y = 0; f.x = Math.random(); } ctx.beginPath(); ctx.arc(f.x * cw, f.y * ch, f.s, 0, 6.28); ctx.fill(); }
   const w = mode === 'play' ? world : (demo && demo.w);
+  TH = themeOf(w && w.L);
+  if (TH.ice) {
+    const dk = C.dark || TH.forceDark;
+    const g = ctx.createLinearGradient(0, 0, 0, ch); g.addColorStop(0, TH.forceDark ? '#081729' : C.sky1); g.addColorStop(1, TH.forceDark ? '#1B3D60' : C.sky2);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
+    if (dk) drawAurora();
+  } else ctx.drawImage(paintBackdrop(), 0, 0, cw, ch);
+  drawParticles();
   const pa = mode === 'play' ? penAnim : demo && demo.pen;
   const sx = shake > .3 ? (Math.random() - .5) * shake : 0, sy = shake > .3 ? (Math.random() - .5) * shake : 0;
   ctx.setTransform(DPR * view.s, 0, 0, DPR * view.s, DPR * (view.ox + sx), DPR * (view.oy + sy));
@@ -1078,19 +1300,22 @@ function worldBottom() { return (ch - view.oy) / view.s + 10; }
 function drawSea(alpha) {
   const l = worldLeft(), r = worldRight(), b = worldBottom();
   ctx.save(); if (alpha) ctx.globalAlpha = alpha;
-  const g = ctx.createLinearGradient(0, SEA, 0, Math.max(SEA + 60, b)); g.addColorStop(0, C.sea1); g.addColorStop(1, C.sea2);
+  const H = hz(), g = ctx.createLinearGradient(0, SEA, 0, Math.max(SEA + 60, b)); g.addColorStop(0, H.c1); g.addColorStop(1, H.c2);
   ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(l, b);
   for (let x = l; x <= r; x += 16) ctx.lineTo(x, SEA + Math.sin(x * .03 + t * .05) * 3);
-  ctx.lineTo(r, b); ctx.closePath(); ctx.fill(); ctx.restore();
+  ctx.lineTo(r, b); ctx.closePath(); ctx.fill();
+  if (H.glow && !alpha) { ctx.globalCompositeOperation = 'lighter'; for (let x = l + ((t * .4) % 60); x < r; x += 60) { ctx.globalAlpha = .25 + Math.sin(t * .05 + x) * .15; ctx.fillStyle = '#FFD24A'; ctx.beginPath(); ctx.ellipse(x, SEA + 18 + Math.sin(x) * 8, 14, 4, 0, 0, 6.28); ctx.fill(); } }
+  ctx.restore();
 }
 function drawSeaFront() {
   const l = worldLeft(), r = worldRight();
-  ctx.save(); ctx.globalAlpha = .55; ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2.5; ctx.beginPath();
+  ctx.save(); ctx.globalAlpha = .55; ctx.strokeStyle = hz().foam; ctx.lineWidth = 2.5; ctx.beginPath();
   for (let x = l; x <= r; x += 16) { const y = SEA + 6 + Math.sin(x * .045 - t * .06) * 3; x === l ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
   ctx.stroke(); ctx.restore();
 }
 function polyPath(c) { ctx.beginPath(); ctx.moveTo(c[0][0], c[0][1]); for (let i = 1; i < c.length; i++) ctx.lineTo(c[i][0], c[i][1]); ctx.closePath(); }
 function drawBlock(b) {
+  if (TH.ground) return drawGround(b, TH.ground);
   const c = PG.corners(b), top = Math.min(...c.map(p => p[1])), bot = Math.max(...c.map(p => p[1]));
   const g = ctx.createLinearGradient(0, top, 0, Math.min(bot, top + 260)); g.addColorStop(0, '#FFFFFF'); g.addColorStop(1, C.dark ? '#A9D3E6' : '#CDE9F5');
   ctx.fillStyle = g; polyPath(c); ctx.fill();
@@ -1102,6 +1327,19 @@ function drawBlock(b) {
   ctx.strokeStyle = C.dark ? 'rgba(80,150,190,.35)' : 'rgba(120,185,215,.45)'; ctx.lineWidth = 2;
   const cx = (c[0][0] + c[1][0]) / 2;
   ctx.beginPath(); ctx.moveTo(cx - 20, top + 30); ctx.lineTo(cx - 8, top + 48); ctx.lineTo(cx - 14, top + 66); ctx.stroke();
+}
+function drawGround(b, G) {
+  const c = PG.corners(b), top = Math.min(...c.map(p => p[1])), bot = Math.max(...c.map(p => p[1]));
+  const g = ctx.createLinearGradient(0, top, 0, Math.min(bot, top + 260)); g.addColorStop(0, G.top); g.addColorStop(1, G.bot);
+  ctx.fillStyle = g; polyPath(c); ctx.fill();
+  ctx.lineJoin = 'round'; ctx.strokeStyle = G.line; ctx.lineWidth = 3; ctx.stroke();
+  ctx.save(); polyPath(c); ctx.clip();
+  if (G.panel) { ctx.strokeStyle = G.crack; ctx.lineWidth = 2; for (let x = b.x - b.w / 2 + 40; x < b.x + b.w / 2; x += 40) { ctx.beginPath(); ctx.moveTo(x, top + 8); ctx.lineTo(x, bot); ctx.stroke(); } ctx.fillStyle = G.line; for (let x = b.x - b.w / 2 + 10; x < b.x + b.w / 2; x += 40) { ctx.beginPath(); ctx.arc(x, top + 16, 2.2, 0, 6.28); ctx.fill(); } }
+  else { ctx.strokeStyle = G.crack; ctx.lineWidth = 2; const cx = (c[0][0] + c[1][0]) / 2; ctx.beginPath(); ctx.moveTo(cx - 20, top + 30); ctx.lineTo(cx - 8, top + 48); ctx.lineTo(cx - 14, top + 66); ctx.moveTo(cx + 30, top + 60); ctx.lineTo(cx + 40, top + 76); ctx.stroke(); }
+  ctx.restore();
+  ctx.strokeStyle = G.cap; ctx.lineWidth = 6; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(c[0][0] + 3, c[0][1] + 2); ctx.lineTo(c[1][0] - 3, c[1][1] + 2); ctx.stroke();
+  if (G.drip) { ctx.fillStyle = G.cap; const dx = c[1][0] - c[0][0], dy = c[1][1] - c[0][1], n = Math.max(1, Math.floor(Math.hypot(dx, dy) / 26)); for (let i = 1; i < n; i++) { const x = c[0][0] + dx * i / n, y = c[0][1] + dy * i / n + 3; ctx.beginPath(); ctx.ellipse(x, y + 5, 4, 7 + (i % 3) * 3, 0, 0, 6.28); ctx.fill(); } }
 }
 function drawPad(b) {
   const c = PG.corners(b);
@@ -1153,6 +1391,7 @@ function drawBallTrack(b) {
   ctx.stroke(); ctx.restore();
 }
 function drawUrchin(x, y, r, rot, rolling) {
+  if (TH.dark) { ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.beginPath(); ctx.arc(x, y, r * 1.55, 0, 6.28); ctx.fill(); ctx.restore(); }
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
   const n = 12; ctx.fillStyle = rolling ? '#B8321C' : '#5B2A86';
   ctx.beginPath();
