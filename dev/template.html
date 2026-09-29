@@ -362,8 +362,8 @@ addEventListener('resize', resize);
 // ---------- game state ----------
 let mode = 'title', li = 0, world = null, pre = null, cur = null, pointerId = null;
 let fx = [], shake = 0, slow = 1, t = 0, penAnim = null, resultTimer = 0, hintShown = false;
-// feel: hit-stop / zoom punch / flash / big stamp text, streaks, near misses, and the previous attempt's footprints
-let hitStop = 0, punch = 0, flash = 0, stamp = null, streak = 0, lastRun = null, runFish = 0, nearCd = 0, nearCount = 0;
+// feel: hit-stop / zoom punch / flash / big stamp text, streaks, near misses
+let hitStop = 0, punch = 0, flash = 0, stamp = null, streak = 0, runFish = 0, nearCd = 0, nearCount = 0;
 const nearState = new Map();
 let demo = null, hintTimer = 0;
 
@@ -376,8 +376,7 @@ function loadLevel(i, keepLines) {
   if (keepLines && pre) { for (const s of pre.strokes) { PG.addStroke(world, s); decorate(world.strokes[world.strokes.length - 1]); } world.inkUsed = pre.ink; }
   else pre = null;
   cur = null; fx = []; slow = 1; penAnim = newPenAnim(); resultTimer = 0;
-  world.trail = []; runFish = 0; nearCount = 0; nearCd = 0; nearState.clear(); stamp = null; punch = 0; flash = 0; hitStop = 0;
-  if (lastRun && lastRun.name !== L.name) lastRun = null;
+  runFish = 0; nearCount = 0; nearCd = 0; nearState.clear(); stamp = null; punch = 0; flash = 0; hitStop = 0;
   $('lvTitle').innerHTML = '<b>' + (L.secret ? '✨' : i + 1) + '</b>' + L.name;
   requestAnimationFrame(layoutView);
   const h = $('hint'); clearTimeout(hintTimer);
@@ -494,6 +493,7 @@ function handleEvents() {
       case 'open': world.openAt = t + 30; setTimeout(() => { SFX.door(); buzz([20, 40, 30]); updateHud(); }, 500); break;
       case 'gold': SFX.key(); SFX.fish(); buzz([20, 30, 20, 30, 40]); burst(ev.x, ev.y, C.gold, 30, 4, 'star'); fx.push(Object.assign(mk('text3', ev.x, ev.y - 16, 0, -.7, 70, '#E0A000'))); break;
       case 'crack': SFX.crack(); break;
+      case 'wake': { const b = world.L.balls[ev.i], q = PG.ballPos(b, 0); fx.push(mk('bang', q[0], q[1] - (b.r || 14) - 16, 0, -.4, 40, C.danger)); tone(880, .07, 'square', .06); tone(1320, .1, 'square', .05, 1, .06); buzz(10); break; }
       case 'warp': SFX.warp(); buzz(12); for (const [x, y] of [[ev.x, ev.y], [ev.x2, ev.y2]]) for (let k = 0; k < 12; k++) { const a = k / 12 * 6.28; fx.push(mk('dot', x + Math.cos(a) * 20, y + Math.sin(a) * 20, -Math.cos(a) * 1.5, -Math.sin(a) * 1.5, 22, '#9EC2FF', 2.5)); } break;
       case 'melt': SFX.melt(); break;
       case 'break': { const b = world.L.crumbles[ev.i]; SFX.crumble(); for (let k = 0; k < 14; k++) fx.push(Object.assign(mk('chunk', b.x + (Math.random() - .5) * b.w, b.y + (Math.random() - .5) * b.h, (Math.random() - .5) * 2, Math.random() * 1.5, 70, '#FFFFFF', 4 + Math.random() * 5), { rot: Math.random() * 6, vr: (Math.random() - .5) * .2 })); break; }
@@ -517,10 +517,9 @@ function rectDist(rc, x, y) {
 function trackRun() {
   const w = world; if (w.state !== 'run') return;
   const p = w.p, L = w.L;
-  if (w.frame % 3 === 0) w.trail.push([p.x, p.y]);
   if (nearCd > 0) nearCd--;
   const gaps = [];
-  (L.balls || []).forEach((b, i) => { const q = PG.ballPos(b, w.frame); gaps.push(['b' + i, Math.hypot(p.x - q[0], p.y - q[1]) - R - (b.r || 14)]); });
+  (L.balls || []).forEach((b, i) => { const q = PG.ballPos(b, PG.ballClock(w, b, i)); gaps.push(['b' + i, Math.hypot(p.x - q[0], p.y - q[1]) - R - (b.r || 14)]); });
   (w.rollers || []).forEach((r, i) => { if (r.alive) gaps.push(['r' + i, Math.hypot(p.x - r.x, p.y - r.y) - R - r.r]); });
   (L.movers || []).forEach((m, i) => gaps.push(['m' + i, rectDist(PG.moverRect(m, w.frame), p.x, p.y) - R]));
   (L.spikes || []).forEach((sp, i) => gaps.push(['s' + i, rectDist(sp, p.x, p.y) - R]));
@@ -538,7 +537,7 @@ function nearMiss(p) {
 }
 function onWin() {
   const st = PG.stars(world), nm = world.L.name;
-  streak++; lastRun = null;
+  streak++;
   penAnim.face = 'happy'; slow = .25; confetti(); SFX.win(1 + Math.min(streak - 1, 6) * .06); buzz([20, 40, 20]);
   if (!reduceMotion) { hitStop = 7; punch = 1; }
   flash = 1; stamp = { txt: st.total === 3 ? 'PERFECT!' : 'CLEAR!', t: 0, perfect: st.total === 3 };
@@ -555,10 +554,6 @@ function onWin() {
 }
 function onFail(why) {
   penAnim.face = 'dizzy'; const p = world.p; streak = 0;
-  { const w = world, L = w.L, f = w.frame;
-    lastRun = { name: L.name, why, x: p.x, y: p.y, trail: w.trail.concat([[p.x, p.y]]),
-      balls: (L.balls || []).filter(b => b.period).map(b => { const q = PG.ballPos(b, f); return [q[0], q[1], b.r || 14]; }).concat((w.rollers || []).filter(r => r.alive).map(r => [r.x, r.y, r.r])),
-      movers: (L.movers || []).map(m => PG.moverRect(m, f)) }; }
   if (why === 'sea') { SFX.splash(); for (let i = 0; i < 26; i++) fx.push(mk('drop', p.x, SEA, (Math.random() - .5) * 6, -Math.random() * 9 - 2, 60, hz().c1, 3 + Math.random() * 3)); }
   else if (why === 'spike' || why === 'ball') { SFX.ouch(); burst(p.x, p.y, why === 'ball' ? '#7A3CA0' : C.danger, 16, 3.5); shake = reduceMotion ? 0 : 12; }
   else { SFX.ouch(); }
@@ -643,7 +638,7 @@ function showResult(win, st, why) {
     const L0 = world.L, sx0 = L0.start.x, sy0 = L0.start.y, gx0 = L0.goal.x, gy0 = L0.goal.y, pp = world.p;
     const prog = Math.round(Math.max(0, Math.min(99, (1 - Math.hypot(gx0 - pp.x, gy0 - pp.y) / (Math.hypot(gx0 - sx0, gy0 - sy0) || 1)) * 100)));
     const ex = document.createElement('div'); ex.className = 'extra';
-    ex.innerHTML = (prog >= 50 ? '<span class="badge near">かまくらまで あと ' + (100 - prog) + '%</span>' : '') + '<span class="badge dim">👣 次は前回の足あとと、ぶつかった場所が見えるよ</span>'; stars.after(ex);
+    ex.innerHTML = (prog >= 50 ? '<span class="badge near">かまくらまで あと ' + (100 - prog) + '%</span>' : ''); stars.after(ex);
     addBtn('ステージ一覧', 'ghost', () => { buildGrid(); setMode('select'); });
     addBtn('もう一度', 'cta', () => loadLevel(li));
   }
@@ -1012,9 +1007,8 @@ function render() {
   (L.boosts || []).forEach(drawBoost);
   (L.spikes || []).forEach(drawSpikes);
   (L.crumbles || []).forEach((b, i) => { if (!w.gone[i]) drawCrumble(b, w.crumble[i] >= 0 ? w.frame - w.crumble[i] : -1); });
-  if (w.state === 'ready' && mode === 'play') { drawLastRun(); drawMotionGhosts(L); }
-  (L.movers || []).forEach(m => { drawMoverTrack(m); drawSpikes(PG.moverRect(m, w.frame)); });
-  (L.balls || []).forEach(b => { drawBallTrack(b); const q = PG.ballPos(b, w.frame); drawUrchin(q[0], q[1], b.r || 14, t * .01 + (b.x || b.cx || 0)); });
+  (L.movers || []).forEach(m => drawSpikes(PG.moverRect(m, w.frame)));
+  (L.balls || []).forEach((b, i) => { const asleep = b.wake && !(w.wakeAt && w.wakeAt[i] >= 0); const q = PG.ballPos(b, PG.ballClock(w, b, i)); drawUrchin(q[0], q[1], b.r || 14, asleep ? 0 : t * .01 + (b.x || b.cx || 0), false, asleep); });
   (w.rollers || []).forEach(r => {
     if (!r.alive) return;
     if (r.y < 8) { const top = Math.max(-view.oy / view.s + 8, -20); ctx.save(); ctx.fillStyle = '#E8552E'; ctx.globalAlpha = .6 + Math.sin(t * .2) * .3; ctx.beginPath(); ctx.moveTo(r.x - 10, top); ctx.lineTo(r.x + 10, top); ctx.lineTo(r.x, top + 14); ctx.closePath(); ctx.fill(); ctx.restore(); }
@@ -1031,31 +1025,6 @@ function render() {
   drawSea(.45);
   drawSeaFront();
   drawOverlay();
-}
-// ready: translucent copies loop through each moving hazard's real motion, with an arrow for the starting direction
-function drawMotionGhosts(L) {
-  const ph = t;
-  (L.balls || []).forEach(b => {
-    if (!b.period) return;
-    const q = PG.ballPos(b, ph % b.period), a = PG.ballPos(b, 0), n = PG.ballPos(b, 7);
-    ctx.save(); ctx.globalAlpha = .3; drawUrchin(q[0], q[1], b.r || 14, t * .01); ctx.restore();
-    const dx = n[0] - a[0], dy = n[1] - a[1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l, rr = (b.r || 14) + 9;
-    ctx.save(); ctx.translate(a[0] + ux * rr, a[1] + uy * rr); ctx.rotate(Math.atan2(uy, ux)); ctx.fillStyle = TH.dark ? '#FFFFFF' : '#5B2A86'; ctx.globalAlpha = .8;
-    ctx.beginPath(); ctx.moveTo(8, 0); ctx.lineTo(-4, -6); ctx.lineTo(-4, 6); ctx.closePath(); ctx.fill(); ctx.restore();
-  });
-  (L.movers || []).forEach(m => { ctx.save(); ctx.globalAlpha = .25; drawSpikes(PG.moverRect(m, ph % m.period)); ctx.restore(); });
-}
-// ready after a failure: where the penguin went last time (a big dot every 0.5s) and what it hit
-function drawLastRun() {
-  const lr = lastRun; if (!lr) return;
-  ctx.save();
-  lr.trail.forEach((q, i) => { const big = i % 10 === 0; ctx.globalAlpha = .2 + .6 * i / lr.trail.length; ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = 'rgba(25,48,77,.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(q[0], q[1], big ? 4.5 : 2.4, 0, 6.28); ctx.fill(); if (big) ctx.stroke(); });
-  if (lr.why === 'ball' || lr.why === 'spike') { ctx.globalAlpha = .5; lr.balls.forEach(([x, y, r]) => drawUrchin(x, y, r, 0)); lr.movers.forEach(rc => drawSpikes(rc)); }
-  ctx.globalAlpha = .9; ctx.strokeStyle = C.danger; ctx.lineWidth = 4; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(lr.x - 9, lr.y - 9); ctx.lineTo(lr.x + 9, lr.y + 9); ctx.moveTo(lr.x + 9, lr.y - 9); ctx.lineTo(lr.x - 9, lr.y + 9); ctx.stroke();
-  ctx.font = '800 13px ' + FONT; ctx.textAlign = 'center'; const ty = Math.max(24, lr.y - 22), tw = ctx.measureText('前回').width + 14;
-  ctx.fillStyle = 'rgba(255,255,255,.9)'; ctx.beginPath(); ctx.roundRect(lr.x - tw / 2, ty - 14, tw, 20, 10); ctx.fill(); ctx.fillStyle = C.danger; ctx.fillText('前回', lr.x, ty + 1);
-  ctx.restore();
 }
 function drawOverlay() {
   if (flash < .02 && !stamp) return;
@@ -1166,17 +1135,7 @@ function drawCrumble(b, age) {
   ctx.moveTo(x0 + b.w * .7, y0); ctx.lineTo(x0 + b.w * .64, y0 + b.h * .5); ctx.lineTo(x0 + b.w * .8, y0 + b.h); ctx.stroke();
   ctx.restore();
 }
-function drawMoverTrack(m) {
-  ctx.save(); ctx.setLineDash([4, 6]); ctx.strokeStyle = 'rgba(215,53,90,.35)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(m.x - (m.dx || 0), m.y - (m.dy || 0)); ctx.lineTo(m.x + (m.dx || 0), m.y + (m.dy || 0)); ctx.stroke(); ctx.restore();
-}
-function drawBallTrack(b) {
-  if (!b.period) return;
-  ctx.save(); ctx.setLineDash([3, 7]); ctx.strokeStyle = 'rgba(122,60,160,.35)'; ctx.lineWidth = 2; ctx.beginPath();
-  if (b.rad) ctx.arc(b.cx, b.cy, b.rad, 0, 6.28); else { ctx.moveTo(b.x - (b.dx || 0), b.y - (b.dy || 0)); ctx.lineTo(b.x + (b.dx || 0), b.y + (b.dy || 0)); }
-  ctx.stroke(); ctx.restore();
-}
-function drawUrchin(x, y, r, rot, rolling) {
+function drawUrchin(x, y, r, rot, rolling, asleep) {
   if (TH.dark) { ctx.save(); ctx.fillStyle = 'rgba(255,255,255,.28)'; ctx.beginPath(); ctx.arc(x, y, r * 1.55, 0, 6.28); ctx.fill(); ctx.restore(); }
   ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
   const n = 12; ctx.fillStyle = rolling ? '#B8321C' : '#5B2A86';
@@ -1188,6 +1147,10 @@ function drawUrchin(x, y, r, rot, rolling) {
   ctx.restore();
   // face stays upright
   ctx.save(); ctx.translate(x, y);
+  if (asleep) {
+    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(-r * .3, -r * .12, r * .18, .2, Math.PI - .2); ctx.moveTo(r * .48, -r * .12); ctx.arc(r * .3, -r * .12, r * .18, .2, Math.PI - .2); ctx.stroke();
+    const z = (t * .02) % 1; ctx.globalAlpha = 1 - z; ctx.fillStyle = TH.dark ? '#FFFFFF' : '#5B2A86'; ctx.font = '800 ' + Math.round(r * .8) + 'px ' + FONT; ctx.fillText('z', r * .9 + z * 6, -r * 1.1 - z * 14); ctx.restore(); return;
+  }
   ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.arc(-r * .3, -r * .1, r * .24, 0, 6.28); ctx.arc(r * .3, -r * .1, r * .24, 0, 6.28); ctx.fill();
   ctx.fillStyle = '#1D2330'; ctx.beginPath(); ctx.arc(-r * .26, -r * .05, r * .12, 0, 6.28); ctx.arc(r * .34, -r * .05, r * .12, 0, 6.28); ctx.fill();
   ctx.strokeStyle = '#1D2330'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(-r * .55, -r * .45); ctx.lineTo(-r * .12, -r * .3); ctx.moveTo(r * .55, -r * .45); ctx.lineTo(r * .12, -r * .3); ctx.stroke();
@@ -1444,6 +1407,7 @@ function drawFx() {
     else if (f.type === 'streak') { ctx.strokeStyle = f.col; ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(f.x, f.y); ctx.lineTo(f.x - f.vx * 5, f.y - f.vy * 5); ctx.stroke(); }
     else if (f.type === 'text') { ctx.fillStyle = f.col; ctx.font = '800 18px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText('+1', f.x, f.y); }
     else if (f.type === 'text3') { ctx.fillStyle = f.col; ctx.font = '800 16px ' + FONT; ctx.textAlign = 'center'; ctx.fillText('金の魚！', f.x, f.y); }
+    else if (f.type === 'bang') { ctx.font = '400 22px "Dela Gothic One", ' + FONT; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = 5; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText('！', f.x, f.y); ctx.fillStyle = f.col; ctx.fillText('！', f.x, f.y); }
     else if (f.type === 'near') { ctx.font = '400 20px "Dela Gothic One", ' + FONT; ctx.textAlign = 'center'; ctx.lineJoin = 'round'; ctx.lineWidth = 6; ctx.strokeStyle = '#FFFFFF'; ctx.strokeText('ヒヤッ！', f.x, f.y); ctx.fillStyle = f.col; ctx.fillText('ヒヤッ！', f.x, f.y); }
     else if (f.type === 'text2') { ctx.fillStyle = f.col; ctx.font = '800 14px ' + getComputedStyle(document.body).fontFamily; ctx.textAlign = 'center'; ctx.fillText('くるっ', f.x, f.y); }
     else { ctx.fillStyle = f.col; ctx.beginPath(); ctx.arc(f.x, f.y, f.size, 0, 6.28); ctx.fill(); }
