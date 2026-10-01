@@ -1,0 +1,14 @@
+{
+  "name": "luma-flow",
+  "version": "3.0.0",
+  "private": true,
+  "description": "50-stage cyberpunk drawing and water circuit physics puzzle",
+  "scripts": {
+    "dev": "node scripts/dev.cjs",
+    "build": "node scripts/create-levels.cjs",
+    "test": "node tests/verify.cjs && node tests/cyber-physics.cjs && node tests/cyber-levels.cjs && node tests/campaign.cjs"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
