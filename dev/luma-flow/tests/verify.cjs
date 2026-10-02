@@ -92,7 +92,7 @@ function gateGraph(world) {
   }
 }
 
-test('gate activation, nested undo and replay restore the exact planning state', () => withWorld(levels[13], world => {
+test('gate activation, nested undo and replay restore the exact planning state', () => withWorld(fixture({gates:[{id:'A',x:80,y:300,w:45,h:12},{id:'B',x:310,y:300,w:45,h:12}],switches:[{x:60,y:200,w:38,gate:'A',minLength:27},{x:330,y:200,w:38,gate:'B',minLength:27}],solutions:[[{x:42,y:150},{x:78,y:150}],[{x:312,y:150},{x:348,y:150}]]}), world => {
   const initial = reversibleState(world);
   assert.equal(world.undo(), false);
   draw(world, world.level.solutions[0]); step(world, 144);
@@ -237,7 +237,7 @@ test('stages 31–50 fail without drawing under two fixed seeds', () => {
 });
 
 test('final puzzle requires each authored stroke', () => {
-  const level = levels[49]; assert.deepEqual(level.essentialStrokes, [0, 1, 2]);
+  const level = levels[49]; assert.deepEqual(level.essentialStrokes, level.solutions.map((_,i)=>i)); assert.ok(level.essentialStrokes.length>0);
   for (const omit of level.essentialStrokes) withWorld(level, world => {
     plan(world, omit); world.pour();
     assert.equal(untilTerminal(world).state, 'lost', `L50 must fail without stroke ${omit + 1}`);

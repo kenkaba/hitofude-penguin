@@ -6,3 +6,5 @@
 .brand,.levelbar{text-shadow:0 2px 8px #000}
 
 #app.flow-restored:after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;box-shadow:inset 0 0 70px var(--world-accent,#53f6ed);animation:reconnect .9s ease-out forwards}@keyframes reconnect{0%{opacity:0}25%{opacity:.65}100%{opacity:0}}@media(prefers-reduced-motion:reduce){#app.flow-restored:after{display:none}}
+
+#ruleText{line-height:1.55;max-width:85%;font-size:11px;color:#d1e4ef}.goal-row{align-items:center;min-height:36px}

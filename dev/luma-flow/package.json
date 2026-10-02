@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "node scripts/dev.cjs",
     "build": "node scripts/create-levels.cjs",
-    "test": "node tests/verify.cjs && node tests/stroke-stability.cjs && node tests/cyber-physics.cjs && node tests/cyber-levels.cjs && node tests/campaign.cjs"
+    "test": "node tests/verify.cjs && node tests/stroke-stability.cjs && node tests/materials.cjs && node tests/cyber-physics.cjs && node tests/cyber-levels.cjs && node tests/campaign.cjs"
   },
   "engines": {
     "node": ">=20"
