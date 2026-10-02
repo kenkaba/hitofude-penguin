@@ -166,7 +166,7 @@ function boot(initialStorage = {}) {
   }
   frames(1);
   return { $, storage, writes, qa: context.__lumaQA, chapters: context.FLOW_WORLDS,
-    levels: context.FLOW_LEVELS, frame, frames, until, freehand,
+    levels: context.FLOW_LEVELS, frame, frames, until, freehand, pointer,
     tap: point => pointer('pointerdown', point),
     progressWrites: () => writes.filter(write => write.key === PROGRESS) };
 }
@@ -183,7 +183,7 @@ function solveThroughControls(app) {
   assert.equal(app.qa.snapshot().state, 'won', 'Real water simulation reached the target');
 }
 
-test('win persists immediately and survives Retry before the 0.7-second result delay', () => {
+test('win persists immediately and survives Retry before the result delay', () => {
   const app = boot({ [PROGRESS]: JSON.stringify({ 7: 2 }) });
   solveThroughControls(app);
   const wonAt = app.qa.snapshot().time;
@@ -192,7 +192,7 @@ test('win persists immediately and survives Retry before the 0.7-second result d
   assert.ok(JSON.parse(saved)[0] > 0, 'The newly won stage is already saved');
   assert.equal(JSON.parse(saved)[7], 2, 'Existing progress is preserved');
   assert.equal(app.progressWrites().length, 1, 'Victory is saved once');
-  app.frames(30);
+  app.frames(10);
   assert.ok(app.qa.snapshot().time - wonAt < 1.1);
   assert.equal(app.$('#result').hidden, true);
   assert.equal(app.progressWrites().length, 1, 'Later winning ticks do not repeatedly save');
@@ -317,7 +317,7 @@ test('adjust restores the pre-pour design through controls and retains Undo', ()
 
 test('2x control speeds simulation with the same fixed-step outcome', () => {
   function attempt(fast) {
-    const app = boot();
+    const app = boot({ [PREFS]: JSON.stringify({ speed: 1 }) });
     for (const points of app.qa.level().solutions) { app.freehand(points); app.frames(72); }
     app.$('#pourBtn').click();
     if (fast) app.$('#speedBtn').click();
@@ -330,4 +330,30 @@ test('2x control speeds simulation with the same fixed-step outcome', () => {
   assert.equal(normal.state,'won'); assert.equal(fast.state,'won');
   assert.ok(fast.frames <= Math.ceil(normal.frames / 2)+1);
   for(let i=0;i<normal.cups.length;i++) assert.ok(Math.abs(normal.cups[i].collected-fast.cups[i].collected)<=2);
+});
+
+
+test('obstacle contact preserves the valid part of a pointer stroke', () => {
+ const app=boot();app.freehand([{x:63,y:170},{x:63,y:260}]);
+ const state=app.qa.snapshot();assert.equal(state.strokes,1);assert.ok(state.ink>45&&state.ink<58);
+ assert.match(app.$('#toast').textContent,/手前/);
+});
+
+test('drawing pauses moving supports until the pointer is released', () => {
+ const app=boot();app.freehand(app.qa.level().solutions[0]);
+ const before=app.qa.snapshot().time;
+ app.pointer('pointerdown',{x:300,y:140});app.pointer('pointermove',{x:340,y:140});app.frames(90);
+ assert.equal(app.qa.snapshot().time,before);
+ app.pointer('pointerup',{x:340,y:140});app.frames(5);
+ assert.ok(app.qa.snapshot().time>before);assert.equal(app.qa.snapshot().strokes,2);
+});
+
+test('failure primary action retains design and selected speed survives retry and reload', () => {
+ const app=boot();app.freehand([{x:300,y:140},{x:340,y:140}]);const ink=app.qa.snapshot().ink;
+ app.$('#pourBtn').click();assert.equal(app.$('#speedBtn').textContent,'2×');app.$('#speedBtn').click();
+ app.until(()=>!app.$('#result').hidden);assert.equal(app.qa.snapshot().state,'lost');
+ assert.equal(app.$('#nextBtn').textContent,'線を残して調整');app.$('#nextBtn').click();
+ assert.equal(app.qa.snapshot().state,'planning');assert.equal(app.qa.snapshot().strokes,1);assert.equal(app.qa.snapshot().ink,ink);
+ app.$('#retryBtn').click();assert.equal(app.$('#speedBtn').textContent,'1×');
+ const reload=boot(Object.fromEntries(app.storage));assert.equal(reload.$('#speedBtn').textContent,'1×');
 });

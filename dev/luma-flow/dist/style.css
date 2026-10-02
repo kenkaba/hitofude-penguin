@@ -4,3 +4,5 @@
 #app{--world-accent:#53f6ed}.brand>span,.levelbar>div>span{color:var(--world-accent,#53f6ed)}#chapterTabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;overflow:visible}#chapterTabs button{min-width:0;min-height:38px}#chapterTabs button[aria-selected="true"]{border-color:var(--world-accent,#53f6ed);color:var(--world-accent,#53f6ed)}.chapter-banner{border-color:var(--world-accent,#53f6ed)}#levelGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.level-tile{min-height:76px}#mapDialog .chapter-banner img{display:none}#mapDialog .chapter-banner{background:linear-gradient(110deg,#163343,#101725)}
 
 .brand,.levelbar{text-shadow:0 2px 8px #000}
+
+#app.flow-restored:after{content:"";position:absolute;inset:0;pointer-events:none;z-index:5;box-shadow:inset 0 0 70px var(--world-accent,#53f6ed);animation:reconnect .9s ease-out forwards}@keyframes reconnect{0%{opacity:0}25%{opacity:.65}100%{opacity:0}}@media(prefers-reduced-motion:reduce){#app.flow-restored:after{display:none}}

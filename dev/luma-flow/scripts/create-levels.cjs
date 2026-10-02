@@ -19,7 +19,7 @@ const levels=entries.map(([name,type,o],i)=>{const l=structuredClone(B[type]);Ob
  if(o.drain){const d=l.cups.length>1?{x:195,y:450,w:80,h:16}:type==='channel'?{x:154,y:450,w:38,h:16}:type==='relay'?{x:175,y:460,w:82,h:16}:type==='elbow'?{x:118,y:414,w:60,h:16}:{x:200,y:455,w:78,h:16};l.drains.push(d);}
  if(i>=30&&type==='elbow'){l.drains.push({x:112,y:273,w:40,h:8});l.platforms.push({x:116,y:250,w:14,h:12});}
  if(i>=30&&type==='relay')l.platforms.push({x:158,y:253,w:24,h:18});
- l.parInk=Math.ceil(l.solutions.reduce((n,p)=>n+length(p),0));l.ink=Math.ceil(l.parInk*(o.tight?1.17:1.4)/10)*10;l.maxStrokes=Math.min(4,l.solutions.length+(i<4?1:0));
+ l.parInk=Math.ceil(l.solutions.reduce((n,p)=>n+length(p),0));l.ink=Math.ceil(l.parInk*(o.tight?1.17:1.4)/10)*10;l.maxStrokes=Math.min(5,l.solutions.length+1);
  const principle={basic:'石を支えにして、器へ向かう坂を作ろう。',balance:'橋の真ん中が、斜めの石の上に乗ると安定します。',elbow:'まっすぐだと箱に当たります。線を曲げて、箱の外へ。',relay:'一つ目の橋から落ちる水を、二つ目の橋で受け止めよう。',drain:'赤い排水口に触れた水は失われます。水路の隙間を橋でつなごう。',hook:'左側にも重さを作ると、支えの上でバランスを取りやすくなります。',split:'水をふたつに分ける形は？山のような屋根を考えてみよう。',arms:'左右の水を、それぞれの器へ。二つの道を用意しよう。',channel:'囲まれた水路の下に出口があります。扉を開けて、その先に橋を。'}[type];
  l.hints=[l.gates.length?'同じ文字のボタンと扉はつながっています。線を重しにして押そう。':principle,l.gates.length?principle:l.cups.length>1?'両方の器が目印まで満ちて、はじめてクリアです。':'描いた線は落ちます。支えと、線の重心を考えてみよう。'];l.rule=l.gates.length?(l.cups.length>1?'扉を開けて、両方の器を満たそう':'線の重みで扉を開け、水を届けよう'):l.cups.length>1?'両方の器を、目印まで満たそう':o.wind?'風を読んで、水の道をつくろう':'線を組み立てて、水を届けよう';l.essentialStrokes=l.solutions.map((_,j)=>j);if(o.mirror)mirror(l);
  if(relayStageIds.has(l.id)&&relayCalibration[l.id]){
