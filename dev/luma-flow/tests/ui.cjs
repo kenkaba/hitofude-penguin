@@ -23,7 +23,7 @@ try {
 const { createCanvas } = canvasModule;
 const dist = path.resolve(__dirname, '../dist');
 const html = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-const scripts = ['vendor/matter.min.js', 'physics.js', 'levels.js', 'game.js']
+const scripts = ['vendor/matter.min.js', 'physics.js', 'levels.js', 'worlds.js', 'game.js']
   .map(name => [name, fs.readFileSync(path.join(dist, name), 'utf8')]);
 const PROGRESS = 'lumaflow-cyber-progress-v3';
 const PREFS = 'lumaflow-prefs-v1';
@@ -165,7 +165,7 @@ function boot(initialStorage = {}) {
     pointer('pointerup', points.at(-1));
   }
   frames(1);
-  return { $, storage, writes, qa: context.__lumaQA, chapters: context.FLOW_CHAPTERS,
+  return { $, storage, writes, qa: context.__lumaQA, chapters: context.FLOW_WORLDS,
     levels: context.FLOW_LEVELS, frame, frames, until, freehand,
     tap: point => pointer('pointerdown', point),
     progressWrites: () => writes.filter(write => write.key === PROGRESS) };
@@ -254,24 +254,24 @@ test('assist Undo removes unfinished points before touching a completed stroke',
   assert.equal(app.$('#undoBtn').disabled, true);
 });
 
-test('five chapter maps expose all 50 stages and every tile constructs and renders its own level', () => {
+test('seventeen three-stage world maps expose all 50 stages and every tile constructs and renders its own level', () => {
   const app = boot({ [PROGRESS]: JSON.stringify({ 0: 3, 9: 1, 49: 2 }) });
-  assert.equal(app.chapters.length, 5);
+  assert.equal(app.chapters.length, 17);
   assert.equal(app.levels.length, 50);
   const visited = new Set();
-  for (let chapter = 0; chapter < 5; chapter++) {
-    for (let offset = 0; offset < 10; offset++) {
+  for (let chapter = 0; chapter < 17; chapter++) {
+    for (let offset = 0; offset < app.chapters[chapter].end-app.chapters[chapter].start+1; offset++) {
       app.$('#mapBtn').click();
       assert.equal(app.$('#mapDialog').open, true);
-      assert.equal(app.$('#chapterTabs').children.length, 5);
+      assert.equal(app.$('#chapterTabs').children.length, 17);
       app.$('#chapterTabs').children[chapter].click();
       const tabs = app.$('#chapterTabs').children;
       assert.equal(tabs.filter(tab => tab.getAttribute('aria-selected') === 'true').length, 1);
       assert.equal(tabs[chapter].getAttribute('aria-selected'), 'true');
       assert.equal(app.$('#mapChapterName').textContent, app.chapters[chapter].name);
       const grid = app.$('#levelGrid').children;
-      assert.equal(grid.length, 10);
-      const index = chapter * 10 + offset;
+      assert.equal(grid.length, app.chapters[chapter].end-app.chapters[chapter].start+1);
+      const index = chapter * 3 + offset;
       const level = app.levels[index];
       const tile = grid[offset];
       assert.equal(tile.getAttribute('aria-label'), `ステージ${level.id} ${level.name}`);
@@ -282,6 +282,9 @@ test('five chapter maps expose all 50 stages and every tile constructs and rende
       assert.equal(app.$('#mapDialog').open, false);
       assert.equal(app.qa.level().id, index + 1, 'Tile closure loads the selected stage, not the last stage');
       assert.equal(app.$('#levelName').textContent, level.name);
+      assert.ok(app.$('#app').style.backgroundImage.includes(app.chapters[chapter].image), 'Correct area art remains paired with every stage');
+      assert.equal(app.$('#app').style['--world-accent'], app.chapters[chapter].accent);
+      assert.ok(app.$('#chapterLabel').textContent.includes(app.chapters[chapter].name));
       assert.equal(app.qa.snapshot().state, 'planning');
       assert.equal(app.qa.snapshot().strokes, 0);
       assert.equal(app.qa.snapshot().cups.length, level.cups.length);
