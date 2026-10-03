@@ -69,4 +69,17 @@ const levels=entries.map(([name,type,o],i)=>{const l=structuredClone(B[type]);Ob
  l.parInk=Math.ceil(l.solutions.reduce((n,p)=>n+length(p),0));l.ink=Math.ceil(l.parInk*1.45/10)*10;l.essentialStrokes=l.solutions.map((_,j)=>j);l.maxStrokes=Math.min(5,l.solutions.length+1);
  return l;
 });
+// Each authored module owns explicit stage slots. Material introductions stay at 1/4/10/13.
+const authoredModules=['structure-levels','portal-levels','pump-levels','color-levels','mixed-levels','finale-levels'];
+const occupied=new Set();
+for(const file of authoredModules)for(const {slot,level} of require('./'+file+'.cjs')){
+ if(slot<1||slot>50||occupied.has(slot))throw Error('Conflicting authored stage '+slot);
+ occupied.add(slot);const l=structuredClone(level),worldIndex=Math.floor((slot-1)/3);
+ l.id=slot;l.worldIndex=worldIndex;l.worldName=require('../dist/worlds.js')[worldIndex].name;l.chapter=Math.floor((slot-1)/10);l.theme=slot<31?'day':'night';
+ if(!l.mechanic||/^[a-z-]+$/.test(l.mechanic)){l.mechanicKind=l.mechanic;l.mechanic=l.rule||l.hints?.[0]||'';}
+ l.parInk=Math.ceil(l.solutions.reduce((n,ps)=>n+length(ps),0));l.ink=l.ink||Math.ceil(l.parInk*1.6/10)*10;l.maxStrokes=l.maxStrokes||Math.min(6,l.solutions.length+1);
+ l.essentialStrokes=l.essentialStrokes||l.solutions.map((_,i)=>i);l.gravityScale=l.gravityScale??1;l.rule=l.rule||l.mechanic;
+ levels[slot-1]=l;
+}
+if(occupied.size!==46)throw Error('Expected 46 authored replacements, got '+occupied.size);
 fs.writeFileSync('dist/levels.js',`(function(r){r.FLOW_CHAPTERS=${JSON.stringify(chapters)};r.FLOW_LEVELS=${JSON.stringify(levels)};if(typeof module!=='undefined')module.exports=r.FLOW_LEVELS;})(typeof window!=='undefined'?window:globalThis);\n`);console.log('Wrote',levels.length,'stages');

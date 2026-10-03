@@ -35,7 +35,7 @@ function withWorld(level, run, seed = 17) {
 function healthy(world) {
   const s = world.snapshot();
   assert.equal(s.finite, true, 'particles and rigid bodies stay finite');
-  assert.equal(s.emitted, s.live + s.collected + s.lost, 'every emitted particle has exactly one destination');
+  assert.equal(s.emitted, s.live + (s.buffered||0) + s.collected + s.lost, 'every emitted particle has exactly one destination');
   assert.equal(s.collected, s.cups.reduce((sum, c) => sum + c.collected, 0), 'cup totals agree with global collection');
   assert.ok(s.drained <= s.lost, 'drained is included in lost');
   assert.ok(s.emitted <= world.total, 'source cannot exceed its water budget');

@@ -51,3 +51,15 @@ Matter.js 0.20.0（MIT）を同梱。第三者ゲームの画像・音声・ス�
 `platform.material` は `ice`（低摩擦）、`rubber`（衝突時の反発）、`conveyor`（上面接触時の搬送）を指定できます。`beltSpeed` はpx/秒、負数で逆向き。`level.gravityScale` は線と水に共通です。素材の表面模様・ベルトの矢印と実際の作用を一致させています。
 
 `tests/materials.cjs` は線と水への作用、非接触時のベルト無効、設計復元、長時間の反発床の安定性を検証します。
+
+## 発想を変える46面の再設計
+
+2026-10の改修では、1・4・10・13面を導入として保持し、残り46面を6つの著者モジュールへ置換しています。`scripts/{structure,portal,pump,color,mixed,finale}-levels.cjs` は1始まりの `slot` と `level` を出力し、ジェネレーターが50面へ統合します。各面に設計意図 `puzzleConcept` を持たせています。
+
+- `level.portals`: `x,y,r,exitX,exitY,vx,vy`。水を出口へ転送、再吸入防止時間あり。
+- `level.pumps`: 同座標に `capacity` を追加。所定量を貯めると起動し、同一粒子を順次送水。
+- 出口の `exitSpread` は任意。未指定なら0、指定時はシード再現可能な横幅で散水。
+- `source.color` / `cup.color`: `cyan` または `amber`。違う色は充填に数えず流失へ計上。`source.vx/vy` は初速。
+- `snapshot.buffered` はポンプ内の水。保存則は `emitted=live+buffered+collected+lost`。
+
+調査した13作品と採用原則は `docs/puzzle-research-2026-10.md`。他ゲームを全編プレイしたという記録ではありません。`tests/variety.cjs` は左右反転を含む物理配置の重複と、一筆省略時の失敗をチェックします。これらの検証は主観的な面白さを保証するものではありません。
